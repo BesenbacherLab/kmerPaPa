@@ -150,6 +150,24 @@ impl DefaultCounter {
         result.reverse();
         PValues { p_values: result }
     }
+
+    pub fn conf_interval(&self, fraction : Float) -> Float {
+        // Return the number of 
+        println!("self:{:#?}", self);
+        let total: Float = self.values.iter().sum::<usize>() as Float;
+        println!("total:{:#?}", total);
+        let mut remaining = fraction * total;
+        //let mut seen : usize = 0;
+        for i in 0..self.values.len() {
+            if remaining >= self.values[i] as Float {
+                remaining -= self.values[i] as Float;
+            } else {
+                return i as Float + remaining/(self.values[i] as Float);
+            }
+        }
+        return total;
+    }
+
 }
 
 impl ToString for DefaultCounter {
@@ -214,5 +232,27 @@ mod tests {
         assert_eq!(p_values.n_hits_or_more(8), 69.0 / 100.0);
         assert_eq!(p_values.n_hits_or_more(9), 39.0 / 100.0);
         assert_eq!(p_values.n_hits_or_more(10), 0.0);
+    }
+
+    #[test]
+    fn test_conf_interval() {
+        let mut counter = DefaultCounter::new();
+        counter.inc(5);
+        for _ in 0..10 {
+            counter.inc(6);
+        }
+        for _ in 0..20 {
+            counter.inc(7);
+        }
+        for _ in 0..30 {
+            counter.inc(8);
+        }
+        for _ in 0..39 {
+            counter.inc(9);
+        }
+        assert_eq!(counter.conf_interval(0.0), 5.0);
+        assert_eq!(counter.conf_interval(1.0), 100.0);
+        assert_eq!(counter.conf_interval(0.05), 6.4);
+        assert_eq!(counter.conf_interval(0.95), 9.871795);
     }
 }

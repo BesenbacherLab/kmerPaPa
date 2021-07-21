@@ -131,6 +131,9 @@ fn main() -> Result<()> {
         .arg(Arg::with_name("include-unknown")
              .long("--include-unknown")
              .help("Also enumerate variants with unknown type (primarily UTR). Default is to not enumerate variants with unknown type."))
+        .arg(Arg::with_name("exclude-synonymous")
+             .long("--exclude-synonymous")
+             .help("Do not enumerate synonymous variants. Default is to enumerate synonymous variants."))
         .arg(Arg::with_name("number-of-random-samples")
              .long("--number-of-random-samples")
              .value_name("NUMBER")
@@ -143,6 +146,12 @@ fn main() -> Result<()> {
              .help("Exclude entrences from gff file that to no include the tag TAG")
              .takes_value(true)
              .multiple(true))
+        .arg(Arg::with_name("alpha")
+             .long("--alpha")
+             .value_name("FLOAT")
+             .default_value("0.1")
+             .help("Alpha value used for confidence interval. 0.1 -> 90% c.i.")
+             .takes_value(true))
     ;
 
 
@@ -367,11 +376,17 @@ fn main() -> Result<()> {
     //action=compare
     let _significant_mutations = {
         if run_all || matches.value_of("action") == Some("compare") {
+            let alpha: Float = matches
+                .value_of("alpha")
+                .expect("clap default value")
+                .parse()
+                .unwrap(); //TODO proper error handling
             let significant_mutations = compare_mutations(
                 require_initialization(&classified_mutations, "--classified-mutations")?,
                 require_initialization(&expected_mutations, "--expected-mutations")?,
                 require_initialization(&sampled_mutations, "--sampled-mutations")?,
                 id,
+                alpha,
             )?;
 
             if let Some(significant_mutations_file) = matches.value_of("significant-mutations") {
