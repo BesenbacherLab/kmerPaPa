@@ -153,9 +153,9 @@ impl DefaultCounter {
 
     pub fn conf_interval(&self, fraction : Float) -> Float {
         // Return the number of 
-        println!("self:{:#?}", self);
+        //println!("self:{:#?}", self);
         let total: Float = self.values.iter().sum::<usize>() as Float;
-        println!("total:{:#?}", total);
+        //println!("total:{:#?}", total);
         let mut remaining = fraction * total;
         //let mut seen : usize = 0;
         for i in 0..self.values.len() {
