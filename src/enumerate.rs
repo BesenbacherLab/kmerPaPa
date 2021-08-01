@@ -23,6 +23,7 @@ pub fn enumerate_possible_mutations(
     filter_for_id: Option<&str>,
     include_intronic : bool,
     include_unknown : bool,
+    filter_plof : bool,
 ) -> Result<PossibleMutations> {
     let mut result = HashMap::new();
     let radius = mutation_rates.radius();
@@ -35,11 +36,12 @@ pub fn enumerate_possible_mutations(
         let start = annotation.range.start - radius;
         let stop = annotation.range.stop + radius + 1;
         let seq = ref_genome.sequence(&annotation.chr, start, stop)?;
-        match possible_mutations(&seq, &annotation, mutation_rates, indel_mutation_rates, drop_nan, include_intronic, include_unknown) {
+        match possible_mutations(&seq, &annotation, mutation_rates, indel_mutation_rates, drop_nan, include_intronic, include_unknown, filter_plof) {
             Ok(mut mutations) => {
                 if scaling_factor != 1.0 {
                     for mutation in &mut mutations {
                         mutation.probability *= scaling_factor;
+                        mutation.probability = f32::min(mutation.probability, 1.0)
                     }
                 }
                 result.insert(annotation.name.clone(), mutations);

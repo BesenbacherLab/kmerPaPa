@@ -139,6 +139,7 @@ pub fn classify_mutations(
     annotations: &[mutexpect::SeqAnnotation],
     genome: &TwoBitFile,
     filter_for_id: Option<&str>,
+    filter_plof : bool,
 ) -> Result<Vec<Mutation>> {
     let mut result = Vec::new();
 
@@ -193,6 +194,7 @@ pub fn classify_mutations(
                                 &sequence_context,
                                 mutation.alt_base().expect("point mutation"),
                                 &overlapping_cds,
+                                filter_plof,
                             );
                         }
                     }

@@ -16,6 +16,7 @@ pub fn compare_mutations(
     expected_mutations: &HashMap<String, ExpectedMutationCounts>,
     sampled_mutations: &SampledMutations,
     filter_for_id: Option<&str>,
+    alpha : Float,
 ) -> Result<Vec<ComparedMutations>> {
     let mut result = vec![];
     let observed_mutations =
@@ -50,6 +51,8 @@ pub fn compare_mutations(
             if mutation_type == MutationType::Nonsense || mutation_type == MutationType::SpliceSite || mutation_type == MutationType::FrameshiftIndel {
                 expected_lof += expected;
                 observed_lof += observed;
+                // sampled is histogram of counts. It's sum should be number of samples.
+                // long samples is count for each sample. Has lenght equal to the number of samples. 
                 let long_sampled = sampled.to_long();
                 if sampled_lof_long.len() == 0 {
                     sampled_lof_long = long_sampled
@@ -61,10 +64,10 @@ pub fn compare_mutations(
             };
 
             let p_value = sampled.p_values().n_hits_or_more(observed);
-            //TODO: add expected_uppper and expected_lower bound for some alpha
-            //should be sampled.p_values().sort() [alpha/2.0] og [-(alpha/2.0)]
+            let expected_lower = sampled.conf_interval(alpha/2.0);
+            let expected_upper = sampled.conf_interval(1.0 - alpha/2.0);
             let comparison =
-                ComparedMutations::new(region.clone(), mutation_type, observed, expected, p_value);
+                ComparedMutations::new(region.clone(), mutation_type, observed, expected, expected_lower, expected_upper, p_value);
             result.push(comparison);
         };
 
@@ -75,7 +78,9 @@ pub fn compare_mutations(
         //println!("sampled_lof:{:#?}",sampled_lof);
         //println!("{:#?}", attributes);
         let p_value = sampled_lof.p_values().n_hits_or_more(observed_lof);
-        let comparison = ComparedMutations::new_lof(region.clone(), observed_lof, expected_lof, p_value);
+        let expected_lower = sampled_lof.conf_interval(alpha/2.0);
+        let expected_upper = sampled_lof.conf_interval(1.0 - alpha/2.0);
+        let comparison = ComparedMutations::new_lof(region.clone(), observed_lof, expected_lof, expected_lower, expected_upper, p_value);
         result.push(comparison);
         
     }
@@ -110,6 +115,8 @@ pub struct ComparedMutations {
     mutation_type: &'static str, // I want a string representation in the output file
     observed: usize,
     expected: Float,
+    expected_lower : Float,
+    expected_upper : Float,
     p_value: Float,
 }
 
@@ -121,12 +128,16 @@ impl ComparedMutations {
         mutation_type: MutationType,
         observed: usize,
         expected: Float,
+        expected_lower : Float,
+        expected_upper : Float,
         p_value: Float,
     ) -> Self {
         Self {
             region,
             observed,
             expected,
+            expected_lower,
+            expected_upper,
             p_value,
             mutation_type: mutation_type.as_str(),
         }
@@ -135,12 +146,16 @@ impl ComparedMutations {
         region: String,
         observed: usize,
         expected: Float,
+        expected_lower : Float,
+        expected_upper : Float,
         p_value: Float,
     ) -> Self {
         Self {
             region,
             observed,
             expected,
+            expected_lower,
+            expected_upper,
             p_value,
             mutation_type: LOF_STRING,
         }
