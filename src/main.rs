@@ -143,6 +143,10 @@ fn main() -> Result<()> {
              .help("Exclude entrences from gff file that to no include the tag TAG")
              .takes_value(true)
              .multiple(true))
+        .arg(Arg::with_name("filter-plof")
+             .long("--filter-plof")
+             .help("filter putatuve LoF variants. (50 bp rule)"))
+
     ;
 
 
@@ -155,6 +159,7 @@ fn main() -> Result<()> {
         .parse()?;
     let include_intronic = matches.occurrences_of("include-intronic") > 0;
     let include_unknown = matches.occurrences_of("include-unknown") > 0;
+    let filter_plof = matches.occurrences_of("filter_plof") > 0;
   
     let required_tags: Option<Vec<&str>> = {
        if let Some(tags) = matches.values_of("required-tag"){
