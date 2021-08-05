@@ -40,8 +40,11 @@ pub fn enumerate_possible_mutations(
             Ok(mut mutations) => {
                 if scaling_factor != 1.0 {
                     for mutation in &mut mutations {
-                        mutation.probability *= scaling_factor;
-                        mutation.probability = f32::min(mutation.probability, 1.0)
+                        mutation.probability = 1.0 - (1.0 - mutation.probability).powf(scaling_factor);
+                        assert!(mutation.probability>=0.0);
+                        assert!(mutation.probability<=1.0);
+                        //mutation.probability *= scaling_factor;
+                        //mutation.probability = f32::min(mutation.probability, 1.0)
                     }
                 }
                 result.insert(annotation.name.clone(), mutations);
