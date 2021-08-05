@@ -40,7 +40,11 @@ pub fn enumerate_possible_mutations(
             Ok(mut mutations) => {
                 if scaling_factor != 1.0 {
                     for mutation in &mut mutations {
-                        mutation.probability = 1.0 - (1.0 - mutation.probability).powf(scaling_factor);
+                        //println!(" {}", mutation.probability);
+                        let x:f64 = 1.0 - (mutation.probability as f64);
+                        let y:f64 = 1.0 - x.powf(scaling_factor as f64);
+                        mutation.probability = y as f32;
+                        //println!("{} {}",mutation.probability, y);
                         assert!(mutation.probability>=0.0);
                         assert!(mutation.probability<=1.0);
                         //mutation.probability *= scaling_factor;
