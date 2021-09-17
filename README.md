@@ -1,4 +1,4 @@
-# GeNovo - Identifying disease genes with de-novo point mutations
+# GeNovo - Identifying disease genes with de-novo mutations
 
 Everyone's genome contains some de-novo mutations: Mutations that are not part
 of their parents' genomes. These de-novo mutations can cause diseases but it is
