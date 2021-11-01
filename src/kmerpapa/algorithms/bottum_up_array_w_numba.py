@@ -14,14 +14,14 @@ def get_right(super_pat, left):
             right += minus_set[super_pat[i]][left[i]]
     return right
 
-def backtrack(gen_pat, pattern, backtrack_mem):
-    pat_num = pattern2num_new(cgppl, gen_pat, pattern)
+def backtrack(pattern, backtrack_mem, PE):
+    pat_num = PE.pattern2num(pattern)
     left_num = backtrack_mem[pat_num]
     if left_num == pat_num:
         return [pattern]
-    left_pat = num2pattern_new(gppl, gen_pat, left_num)
+    left_pat = PE.num2pattern(left_num)
     right_pat = get_right(pattern, left_pat)
-    return backtrack(gen_pat, left_pat, backtrack_mem) + backtrack(gen_pat, right_pat, backtrack_mem)
+    return backtrack(left_pat, backtrack_mem, PE) + backtrack(right_pat, backtrack_mem, PE)
 
 def score(M, U):
     p = (M + alpha)/(M + U + alpha + beta)
@@ -87,6 +87,8 @@ def pattern_partition_bottom_up(gen_pat, contextD, alpha_, beta_, penalty_, args
     M_mem = np.empty(npat, dtype=itype)
     backtrack_mem = np.empty(npat, dtype=np.uint64)
 
+    PE = PatternEnumeration(gen_pat)
+
     cgppl = np.array(get_cum_genpat_pos_level(gen_pat), dtype=np.uint32)
     gppl = np.array(get_genpat_pos_level(gen_pat), dtype=np.uint32)
     gpo = np.array([ord(x) for x in gen_pat], dtype=np.uint32)
@@ -102,7 +104,7 @@ def pattern_partition_bottom_up(gen_pat, contextD, alpha_, beta_, penalty_, args
     has_complement[ord('T')] = False
 
     for pattern in subpatterns_level(gen_pat, 0):
-        pat_num = pattern2num_new(cgppl, gen_pat, pattern)
+        pat_num = PE.pattern2num(pattern)
         tup = contextD[pattern]
         nm = tup[index_mut]
         nu = tup[-1]
@@ -117,8 +119,8 @@ def pattern_partition_bottom_up(gen_pat, contextD, alpha_, beta_, penalty_, args
         for pattern in subpatterns_level_ord_np(gpot, gen_pat_level, level):
             handle_pattern(pattern, score_mem, backtrack_mem, M_mem, U_mem)
     
-    pat_num = pattern2num_new(cgppl, gen_pat, gen_pat)
-    names = backtrack(gen_pat, gen_pat, backtrack_mem)
+    pat_num = PE.pattern2num(gen_pat)
+    names = backtrack(gen_pat, backtrack_mem, PE)
     return score_mem[pat_num], M_mem[pat_num], U_mem[pat_num], names
 
 

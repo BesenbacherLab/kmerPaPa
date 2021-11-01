@@ -76,38 +76,6 @@ for x in complements:
 
 complements_ord2ord = tuple(complements_ord2ord)
 
-set_code2 = {'A':set(['A']),
-             'C':set(['C']),
-             'G':set(['G']),
-             'T':set(['T']),
-             'R':set(['A', 'G', 'R']),
-             'Y':set(['C', 'T', 'Y']),
-             'S':set(['G', 'C', 'S']),
-             'W':set(['A', 'T', 'W']),
-             'K':set(['G', 'T', 'K']),
-             'M':set(['A', 'C', 'M']),
-             'B':set(['C', 'G', 'T', 'S', 'Y', 'K', 'B']),
-             'D':set(['A', 'G', 'T', 'R', 'W', 'K', 'D']),
-             'H':set(['A', 'C', 'T', 'M', 'W', 'Y', 'H']),
-             'V':set(['A', 'C', 'G', 'M', 'R', 'S', 'V']),
-             'N':set(['A', 'C', 'G', 'T', 'R', 'Y', 'S', 'W', 'K', 'M', 'B', 'D', 'H', 'V','N'])}
-
-# sub_code = {'A':['A'],
-#             'C':['C'],
-#             'G':['G'],
-#             'T':['T'],
-#             'R':['A', 'G'],
-#             'Y':['C', 'T'],
-#             'S':['G', 'C'],
-#             'W':['A', 'T'],
-#             'K':['G', 'T'],
-#             'M':['A', 'C'],
-#             'B':['C', 'G', 'T', 'S', 'Y', 'K'],
-#             'D':['A', 'G', 'T', 'R', 'W', 'K'],
-#             'H':['A', 'C', 'T', 'M', 'W', 'Y'],
-#             'V':['A', 'C', 'G', 'M', 'R', 'S'],
-#             'N':['A', 'C', 'G', 'T', 'R', 'Y', 'S', 'W', 'K', 'M', 'B', 'D', 'H', 'V']}
-
 perm_code = {'A':['A'],
             'C':['C'],
             'G':['G'],
@@ -123,6 +91,13 @@ perm_code = {'A':['A'],
             'H':['A', 'C', 'T', 'M', 'W', 'Y', 'H'],
             'V':['A', 'C', 'G', 'M', 'R', 'S', 'V'],
             'N':['A', 'C', 'G', 'T', 'R', 'Y', 'S', 'W', 'K', 'M', 'B', 'D', 'H', 'V', 'N']}
+
+
+# dictionary from IUPAC character to nucleotide set
+set_perm_code = {}
+for x in perm_code:
+    set_perm_code[x] = frozenset(perm_code[x])
+
 
 # x,y are IUPAC patterns
 # y is sub pattern of x
@@ -244,28 +219,34 @@ def get_cum_genpat_pos_level(genpat):
         s *= x
     return L
 
-# TODO: rename
-# TODO: Kan jeg samle funktionerne i en klasse
-# hvor cgppl og gen_pat er sat i __init__?
-def pattern2num_new(cgppl, genpat, pat):
-    s = 0
-    for i in range(len(genpat)):
-        s += perm_code_no[genpat[i]][pat[i]] * cgppl[i]
-    return s
+
+class PatternEnumeration():
+    def __init__(self, general_pattern):
+        self.genpat = general_pattern
+        self.gppl = get_genpat_pos_level(general_pattern)
+        self.cgppl = get_cum_genpat_pos_level(general_pattern)
+    
+    def pattern2num(self, pattern):
+        s = 0
+        for i in range(len(self.genpat)):
+            s += perm_code_no[self.genpat[i]][pattern[i]] * self.cgppl[i]
+        return s
+
+    def num2pattern(self, num):
+        num=int(num)
+        pat = ''
+        for i in range(len(self.genpat)):
+            k = num % self.gppl[i]
+            num = num // self.gppl[i]
+            pat = pat + perm_code[self.genpat[i]][k]
+        return pat
+
 
 def pattern2num_new_ord(cgppl, genpat, pat):
     s = 0
     for i in range(len(genpat)):
         s += perm_code_no_np[genpat[i]][pat[i]] * cgppl[i]
     return s
-
-def num2pattern_new(gppl, genpat, num):
-    pat = ''
-    for i in range(len(genpat)):
-        k = num % gppl[i]
-        num = num // gppl[i]
-        pat = pat + perm_code[genpat[i]][k]
-    return pat
 
 def LCA_pattern_of_kmers(contexts):
     '''Least common ancestor (LCA) pattern of a list of k-mers'''
@@ -400,39 +381,28 @@ def subpatterns(pattern):
 
 
 def generality(pat):
+    """Number of kmers that match a given pattern
+
+    Args:
+        pat (str): IUPAC pattern
+
+    Returns:
+        int: Number of kmers that match pat
+    """
     res = 1
     for x in pat:
         res *= len(code[x])
     return res
 
-
-def num2pattern(general_pattern, num):
-    pat = ''
-    for i in range(len(general_pattern)-1,-1,-1):
-        k = int(num) % len(perm_code[general_pattern[i]])
-        num = num // len(perm_code[general_pattern[i]])
-        pat = perm_code[general_pattern[i]][k] + pat
-    return pat
-
-def num2pattern2(general_pattern, num):
-    pat = ['']
-    for i in range(len(general_pattern)-1,-1,-1):
-        k = int(num) % len(perm_code[general_pattern[i]])
-        num = num // len(perm_code[general_pattern[i]])
-        pat = [perm_code[general_pattern[i]][k]] + pat
-    return ''.join(pat)
-
-
-def pattern2num(general_pattern, pattern):
-    num = 0
-    k = 1
-    for i in range(len(general_pattern)-1,-1,-1):
-        num += perm_code_no[general_pattern[i]][pattern[i]] * k
-        k *= (len(perm_code[general_pattern[i]]))
-    return num
-
-
 def pattern_max(general_pattern):
+    """Number of subpatterns of a pattern
+
+    Args:
+        general_pattern (str): IUPAC pattern
+
+    Returns:
+        int: Number of subpatterns of general_pattern
+    """
     res = 1
     for i in range(len(general_pattern)):
         res *= len(perm_code[general_pattern[i]])
