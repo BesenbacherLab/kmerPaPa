@@ -1,0 +1,47 @@
+site_name: "kmerpapa"
+site_description: "Tool to calculate a "k-mer pattern partition" from position specific k-mer counts."
+site_url: "https://besenbacher.github.io/kmerpapa"
+repo_url: "https://github.com/besenbacher/kmerpapa"
+repo_name: "besenbacher/kmerpapa"
+site_dir: "site"
+
+nav:
+- Home:
+  - Overview: index.md
+  - License: license.md
+- Code Reference:
+  - cli.py: reference/cli.md
+
+theme:
+  name: material
+  features:
+  - navigation.tabs
+  palette:
+    scheme: slate
+    primary: teal
+    accent: purple
+
+extra_css:
+- css/mkdocstrings.css
+
+markdown_extensions:
+- admonition
+- pymdownx.emoji
+- pymdownx.magiclink
+- pymdownx.snippets:
+    check_paths: true
+- pymdownx.superfences
+- pymdownx.tabbed
+- pymdownx.tasklist
+- toc:
+    permalink: "¤"
+
+plugins:
+- search
+- coverage:
+    html_report_dir: build/coverage
+- mkdocstrings:
+    watch:
+    - src/kmerpapa
+- macros:
+    module_name: docs/macros
