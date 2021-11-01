@@ -1,4 +1,5 @@
 from kmerpapa.pattern_utils import *
+from kmerpapa.score_utils import get_betas
 import kmerpapa.CV_tools
 import sys
 from numba import njit
@@ -95,6 +96,8 @@ def pattern_partition_bottom_up(gen_pat, contextD, alphas, args, nmut, nunmut, p
     else:
         itype = np.uint32
 
+    PE = PatternEnumeration(gen_pat)
+
     U_mem = np.empty((npat,nf), dtype=itype)
     M_mem = np.empty((npat,nf), dtype=itype)
     #U_mem[2,1] indeholder antal test sampels i pat_no 2 foerste fold
@@ -110,7 +113,7 @@ def pattern_partition_bottom_up(gen_pat, contextD, alphas, args, nmut, nunmut, p
     test_loss = {(a_i, p_i):[] for a_i in range(len(alphas)) for p_i in range(len(penalties))}
     train_loss = {(a_i, p_i):[] for a_i in range(len(alphas)) for p_i in range(len(penalties))}
     gen_pat_len = len(gen_pat)
-    gen_pat_num = pattern2num_new(cgppl, gen_pat, gen_pat)
+    gen_pat_num = PE.pattern2num(gen_pat)
 
     has_complement = np.full(100,True)
     has_complement[ord('A')] = False
@@ -124,7 +127,7 @@ def pattern_partition_bottom_up(gen_pat, contextD, alphas, args, nmut, nunmut, p
     for iteration in range(nit):
         if args.verbosity > 0 and nit > 1:
             print('CV Iteration', iteration, file=sys.stderr)
-        kmerpapa.CV_tools.make_all_folds_contextD_w_cgppl(contextD, U_mem, M_mem, gen_pat, itype, cgppl, prng)
+        kmerpapa.CV_tools.make_all_folds_contextD_patterns(contextD, U_mem, M_mem, gen_pat, prng, itype)
         if args.verbosity > 0:
             print('CV sampling DONE', file=sys.stderr)
     
@@ -135,12 +138,12 @@ def pattern_partition_bottom_up(gen_pat, contextD, alphas, args, nmut, nunmut, p
 
         for a_i in range(len(alphas)):
             alpha = alphas[a_i]
-            betas = kmerpapa.CV_tools.get_betas(alpha, M_sum_train, U_sum_train)
+            betas = get_betas(alpha, M_sum_train, U_sum_train)
             for p_i in range(len(penalties)):
                 score_mem = np.full((npat,nf), 1e100, dtype=ftype)
                 penalty = penalties[p_i]
                 for pattern in subpatterns_level(gen_pat, 0):
-                    pat_num = pattern2num_new(cgppl, gen_pat, pattern)
+                    pat_num = PE.pattern2num(pattern)
                     M_test = M_mem[pat_num]
                     U_test = U_mem[pat_num]
                     M_train = get_train(M_test)

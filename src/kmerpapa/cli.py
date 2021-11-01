@@ -2,11 +2,11 @@
 
 import argparse
 import sys
-from kmerpapa.pattern_utils import LCA_pattern_of_kmers
+from kmerpapa.pattern_utils import LCA_pattern_of_kmers, get_M_U
 from kmerpapa.score_utils import get_loss
 from kmerpapa.papa import *
 from kmerpapa.io_utils import read_input, downsize_contextD
-from math import log
+from math import log    
 import kmerpapa.algorithms.all_kmers_CV
 from kmerpapa.algorithms import bottum_up_array_penalty_plus_pseudo
 from kmerpapa.algorithms import greedy_penalty_plus_pseudo

@@ -1,5 +1,5 @@
 from kmerpapa.pattern_utils import *
-from kmerpapa.CV_tools import make_all_folds_contextD
+from kmerpapa.CV_tools import make_all_folds_contextD_kmers
 from kmerpapa.score_utils import get_betas
 import sys
 import numpy
@@ -24,7 +24,7 @@ def all_kmers(gen_pat, contextD, alphas, args, nmut, nunmut, index_mut=0):
     train_loss = {a_i:[] for a_i in range(len(alphas))}
     prng = np.random.RandomState(args.seed)
     for iteration in range(nit):
-        make_all_folds_contextD(contextD, U_mem, M_mem, gen_pat, prng)
+        make_all_folds_contextD_kmers(contextD, U_mem, M_mem, gen_pat, prng)
         M_sum_test = M_mem.sum(axis=0) # n_mut for each fold
         U_sum_test = U_mem.sum(axis=0) # n_unmut for each fold 
         M_sum_train = sum(M_sum_test) - M_sum_test

@@ -1,5 +1,5 @@
 import numpy as np
-from kmerpapa.pattern_utils import matches, pattern2num_new
+from kmerpapa.pattern_utils import matches, PatternEnumeration
 
 
 def sample(m, colors, itype, prng):
@@ -27,18 +27,18 @@ def sample(m, colors, itype, prng):
     return result
 
 
-def make_all_folds_contextD_w_cgppl(contextD, U_mem, M_mem, general_pattern, itype, cgppl, prng):
+def make_all_folds_contextD_patterns(contextD, U_mem, M_mem, general_pattern, prng, itype = np.uint64):
     """Divide counts from contextD into U_mem and M_mem by sampling from multivariate hypergeometric distribution
 
     Args:
         contextD ({kmer:(n_mut, n_unmut)}): Dictionary with counts for kmer
-        U_mem ((n_folds x n_kmers) np.array): Array to be filled with unmutated counts for each kmer for each fold
-        M_mem ((n_folds x n_kmers) np.array): Array to be filled with mutated counts for each kmer for each fold
+        U_mem ((n_folds x n_patterns) np.array): Array to be filled with unmutated counts for each kmer for each fold
+        M_mem ((n_folds x n_pattern) np.array): Array to be filled with mutated counts for each kmer for each fold
         general_pattern (str): The general pattern. fx "NNN".
-        itype : integer type should be either np.uint32 or np.uint64
-        cgppl ([type]): [description]
         prng : numpy random number generator
+        itype : integer type should be either np.uint32 or np.uint64
     """
+    PE = PatternEnumeration(general_pattern)
     contexts = list(contextD.keys())
     contexts.sort()
     colors = np.empty(2*len(contexts), dtype=itype)
@@ -57,13 +57,12 @@ def make_all_folds_contextD_w_cgppl(contextD, U_mem, M_mem, general_pattern, ity
     samples[:,n_folds-1] = colors
     for i in range(len(contexts)):
         context = contexts[i]
-        pat_num = pattern2num_new(cgppl, general_pattern, context)
-        #pat_num = pattern2num(gen_pat, context)
+        pat_num = PE.pattern2num(context)
         M_mem[pat_num] = samples[i]
         U_mem[pat_num] = samples[i+len(contexts)]
 
 
-def make_all_folds_contextD(contextD, U_mem, M_mem, general_pattern, prng):
+def make_all_folds_contextD_kmers(contextD, U_mem, M_mem, general_pattern, prng):
     """Divide counts from contextD into U_mem and M_mem by sampling from multivariate hypergeometric distribution
 
     Args:

@@ -1,5 +1,5 @@
 from kmerpapa.pattern_utils import *
-from kmerpapa.CV_tools import make_all_folds_contextD
+from kmerpapa.CV_tools import make_all_folds_contextD_kmers
 from kmerpapa.score_utils import get_betas
 import sys
 import numpy
@@ -31,10 +31,6 @@ def test_folds(trainM, trainU, testM, testU, alphas, betas):
     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
     return -2 *(xlogy(testM, p) + xlog1py(testU, -p))
 
-def test_subpattern():
-    gen_pat = 'NMN'
-    for i in range(generality(gen_pat)):
-        print(i, num2pattern(gen_pat, i))
 
 def get_score(pattern, contextD, alpha, beta, penalty):
     M,U = get_M_U(pattern, contextD)
@@ -93,7 +89,7 @@ def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties
     for iteration in range(nit):
         if args.verbose:
             print(f'CV iteration {iteration}', file=sys.stderr)
-        make_all_folds_contextD(contextD, U_mem, M_mem, gen_pat, prng)
+        make_all_folds_contextD_kmers(contextD, U_mem, M_mem, gen_pat, prng)
         M_sum_test = M_mem.sum(axis=0) # n_mut for each fold
         U_sum_test = U_mem.sum(axis=0) # n_unmut for each fold 
         M_sum_train = sum(M_sum_test) - M_sum_test

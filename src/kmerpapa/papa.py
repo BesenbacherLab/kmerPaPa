@@ -1,4 +1,4 @@
-from kmerpapa.pattern_utils import code, matches, set_code, set_code2, inv_code
+from kmerpapa.pattern_utils import code, matches, set_code, set_perm_code, inv_code
 
 class Pattern():
     """Class representing a k-mer pattern
@@ -38,7 +38,7 @@ class Pattern():
     def __le__(self, other):
         '''Is other pattern a subpattern of this'''
         for (x, y) in zip(self.pattern, other.pattern):
-            if x not in set_code2[y]:
+            if x not in set_perm_code[y]:
                 return False
         return True
 
