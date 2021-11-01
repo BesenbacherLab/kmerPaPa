@@ -8,7 +8,7 @@ from kmerpapa.papa import *
 from kmerpapa.io_utils import read_input, downsize_contextD
 from math import log    
 import kmerpapa.algorithms.all_kmers_CV
-from kmerpapa.algorithms import bottum_up_array_penalty_plus_pseudo
+from kmerpapa.algorithms import bottum_up_array_penalty_plus_pseudo_CV
 from kmerpapa.algorithms import greedy_penalty_plus_pseudo
 from kmerpapa.algorithms import bottum_up_array_w_numba
 
@@ -160,7 +160,7 @@ def main(args = None):
             if args.verbosity > 0:
                 print(f'penalty values not set. Using {args.penalty_values[0]}', file=sys.stderr)
         else:
-            print('PROBLEM', args.score)
+            assert False, f"illegal score option {args.score}"
 
  
     gen_pat = LCA_pattern_of_kmers(list(contextD.keys()))
@@ -207,7 +207,7 @@ def main(args = None):
                 this_alpha, test_score =  kmerpapa.algorithms.all_kmers_CV.all_kmers(this_gen_pat, this_contextD, args.pseudo_counts, args, n_mut, n_unmut)
                 this_penalty = None
             else:
-                this_alpha, this_penalty, test_score = bottum_up_array_penalty_plus_pseudo.pattern_partition_bottom_up(this_gen_pat, this_contextD, args.pseudo_counts, args, n_mut, n_unmut, args.penalty_values)
+                this_alpha, this_penalty, test_score = bottum_up_array_penalty_plus_pseudo_CV.pattern_partition_bottom_up(this_gen_pat, this_contextD, args.pseudo_counts, args, n_mut, n_unmut, args.penalty_values)
             if test_score < best_score:
                 best_score = test_score
                 best_k = k

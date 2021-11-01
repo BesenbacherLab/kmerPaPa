@@ -7,9 +7,9 @@ import numpy as np
 import scipy.special
 
 '''
-Handles cross validation.
-Used to find best meta-parameter values
-Back-track is not implemented for CV. After best meta-parameters is found
+Handles cross validation. Used to find best meta-parameter values.
+Back-track is not implemented for CV. After best meta-parameters are found kmerpapa.bottom_up_array_w_numba 
+should be used to train model on all data and to backtrack to find best solution
 '''
 
 def score_test_folds(trainM, trainU, testM, testU, alphas, betas, penalty):
