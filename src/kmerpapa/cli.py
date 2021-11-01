@@ -1,14 +1,3 @@
-# Why does this file exist, and why not put this in `__main__`?
-#
-# You might be tempted to import things from `__main__` later,
-# but that will cause problems: the code will get executed twice:
-#
-# - When you run `python -m kmerpapa` python will execute
-#   `__main__.py` as a script. That means there won't be any
-#   `kmerpapa.__main__` in `sys.modules`.
-# - When you import `__main__` it will get executed again (as a module) because
-#   there's no `kmerpapa.__main__` in `sys.modules`.
-
 """Module that contains the command line application."""
 
 import argparse
@@ -22,9 +11,6 @@ import kmerpapa.algorithms.all_kmers_CV
 from kmerpapa.algorithms import bottum_up_array_penalty_plus_pseudo
 from kmerpapa.algorithms import greedy_penalty_plus_pseudo
 from kmerpapa.algorithms import bottum_up_array_w_numba
-
-# TODO: flyt til anden fil
-
 
 def get_parser():
     """
@@ -132,11 +118,8 @@ def main(args = None):
     args = parser.parse_args(args=args)
 
     if args.version:
-        try:
-            from importlib import metadata
-        except ImportError: # for Python<3.8
-            import importlib_metadata as metadata
-        print("installed version:", metadata.version('kmerpapa'))
+        from kmerpapa import __version__
+        print("version:", __version__)
         print()
         return 0
 
@@ -291,7 +274,7 @@ def main(args = None):
     if args.verbosity>0:
         print(f'Optimal k-mer pattern partition contains {len(names)} patterns.', file=sys.stderr)
         print(f'loss={best_score}', file=sys.stderr)
-        print(f'LL={get_LL(counts, best_alpha, best_beta)}', file=sys.stderr)
+        print(f'LL={get_loss(counts, best_alpha, best_beta)}', file=sys.stderr)
 
     if args.long_output:
         print('context', 'c_neg', 'c_pos', 'c_rate',

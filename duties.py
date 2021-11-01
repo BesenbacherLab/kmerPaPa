@@ -145,7 +145,8 @@ def release(ctx, version):
         version: The new version number to use.
     """
     ctx.run(f"poetry version {version}", title=f"Bumping version in pyproject.toml to {version}", pty=PTY)
-    ctx.run("git add pyproject.toml CHANGELOG.md", title="Staging files", pty=PTY)
+    ctx.run(f'sed -i "" "s/__version__ = .*/__version__ = \\"{version}\\"/g" src/kmerpapa/__init__.py')
+    ctx.run("git add pyproject.toml src/kmerpapa/__init__.py", title="Staging files", pty=PTY)
     ctx.run(["git", "commit", "-m", f"chore: Prepare release {version}"], title="Committing changes", pty=PTY)
     ctx.run(f"git tag {version}", title="Tagging commit", pty=PTY)
     if not TESTING:
