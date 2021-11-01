@@ -27,6 +27,3 @@ def test_pattern_enumeration():
                 assert PE.num2pattern(pattern2num_new_ord(cgppl, ord_general_pattern, ord_pattern)) == pattern
         assert n_seen_pat == npat, f"mismatch n_seen_pat:{n_seen_pat}, npat:{npat}"
         
-        #for i in range(npat)
-        #    pattern 
-        #    pattern2num

@@ -363,20 +363,20 @@ def subpatterns_level_ord_np(pattern, cur_level, level):
             yield (x,)
 
 
-def subpatterns2(pattern):
-    if len(pattern) == 0:
-        yield ''
-    else:
-        for y in subpatterns2(pattern[1:]):
-            for x in perm_code[pattern[0]]:
-                yield x+y
-
 def subpatterns(pattern):
+    """Generate all subpatterns of pattern
+
+    Args:
+        pattern (str): IUPAC pattern
+
+    Yields:
+        str: IUPAC subpattern of pattern
+    """
     if len(pattern) == 0:
         yield ''
     else:
-        for x in perm_code[pattern[0]]:
-            for y in subpatterns(pattern[1:]):
+        for y in subpatterns(pattern[1:]):
+            for x in perm_code[pattern[0]]:
                 yield x+y
 
 

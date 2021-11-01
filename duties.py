@@ -1,16 +1,11 @@
 """Development tasks."""
 
 import os
-import re
 import sys
 from pathlib import Path
 from shutil import which
-from typing import List, Optional, Pattern
 
-import httpx
 from duty import duty
-from git_changelog.build import Changelog, Version
-from jinja2.sandbox import SandboxedEnvironment
 
 PY_SRC_PATHS = (Path(_) for _ in ("src", "tests", "duties.py", "docs/macros.py"))
 PY_SRC_LIST = tuple(str(_) for _ in PY_SRC_PATHS)
@@ -148,13 +143,13 @@ def release(ctx, version):
     ctx.run(f'sed -i "" "s/__version__ = .*/__version__ = \\"{version}\\"/g" src/kmerpapa/__init__.py')
     ctx.run("git add pyproject.toml src/kmerpapa/__init__.py", title="Staging files", pty=PTY)
     ctx.run(["git", "commit", "-m", f"chore: Prepare release {version}"], title="Committing changes", pty=PTY)
-    ctx.run(f"git tag {version}", title="Tagging commit", pty=PTY)
+    ctx.run(f"git tag v{version}", title="Tagging commit", pty=PTY)
     if not TESTING:
         ctx.run("git push", title="Pushing commits", pty=False)
         ctx.run("git push --tags", title="Pushing tags", pty=False)
         ctx.run("poetry build", title="Building dist/wheel", pty=PTY)
         ctx.run("poetry publish", title="Publishing version", pty=PTY)
-        docs_deploy.run()  # type: ignore
+        #docs_deploy.run()  # type: ignore
 
 
 @duty(silent=True)
