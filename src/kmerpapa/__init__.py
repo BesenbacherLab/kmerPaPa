@@ -5,4 +5,4 @@ Tool to calculate a "k-mer pattern partition" from position specific k-mer count
 """
 
 __all__ = []  
-__version__ = "0.1.0"
+__version__ = "0.2.0"
