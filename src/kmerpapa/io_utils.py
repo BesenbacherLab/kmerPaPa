@@ -171,7 +171,7 @@ def read_postive_and_other(fpos, fother, super_pattern, n_scale=1, background=Tr
             assert count_denominator >= count_mut, '''
                 background counts should be larger than the positive counts
                 so that a negative set can be created by subtraction the positive count
-                from the background count. Problematic context: {context}
+                from the background count. Problematic k-mer: {context}
                 '''
             count_denominator = count_denominator - count_mut
 
@@ -206,10 +206,10 @@ def read_input(args, super_pattern):
             --background option (but not both) must be used.
             '''
         if not args.negative is None:
-            contextD, n_unmut, n_mut = read_postive_and_other(args.positive, args.negative, super_pattern, n_scale = args.scale_factor, background=False)
+            contextD, n_unmut, n_mut = read_postive_and_other(args.positive, args.negative, super_pattern, n_scale = 1, background=False)
         else:
-            contextD, n_unmut, n_mut = read_postive_and_other(args.positive, args.background, super_pattern, n_scale = args.scale_factor, background=True)
+            contextD, n_unmut, n_mut = read_postive_and_other(args.positive, args.background, super_pattern, n_scale = 1, background=True)
     else:
-            contextD, n_unmut, n_mut = read_joint_kmer_counts(args.joint_context_counts, super_pattern, n_scale = args.scale_factor)
+            contextD, n_unmut, n_mut = read_joint_kmer_counts(args.joint_context_counts, super_pattern, n_scale = 1)
         
     return contextD, n_unmut, n_mut

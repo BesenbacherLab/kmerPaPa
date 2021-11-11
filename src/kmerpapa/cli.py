@@ -40,12 +40,15 @@ def get_parser():
         help='File with k-mer counts in positive set and background set. '
         'This option can be used instead of having positive and '
         'negative counts in seperate files.')
-    parser.add_argument(
-        '-m', '--scale_factor', default='1', type=float,
-        help='All background (or negative) counts will be multiplied by this number. '
-        'If the positive set is based on observations from n genomes and the bacgkround '
-        'is based on the number of occurances in the reference genome then the scale factor '
-        'should be 2*n.')
+    ## It is probably best not to use the --scale_factor option but instead just scale the
+    ## rates afterwards. So I am commenting it out for now. If I want to use it again I need
+    ## to use args.scale_factor in io_utils.read_input again.
+    #parser.add_argument(
+    #    '-m', '--scale_factor', default='1', type=float,
+    #    help='All background (or negative) counts will be multiplied by this number. '
+    #    'If the positive set is based on observations from n genomes and the bacgkround '
+    #    'is based on the number of occurances in the reference genome then the scale factor '
+    #    'should be 2*n.')
     parser.add_argument(
         '-f', '--CVfile', type=argparse.FileType('w'),
         help='File with training and test likelihood values from cross validation.')
@@ -57,17 +60,19 @@ def get_parser():
         help="Only run crossvalidation. Do not run on whole data set using best values afterwards.")
     parser.add_argument(
         '--greedy', action='store_true',
-        help="Do not calculate the optimal partition by use a greedy heuristic")
+        help="Use a fast greedy heuristic to find a (hopefully) good but not necessarily optimal pattern partition.")
     parser.add_argument(
         '--greedyCV', action='store_true',
         help="Use a greedy heuristic during CV but use optimal algorithm afterwards")
     parser.add_argument(
         '-l', '--long_output', action='store_true',
-        help="Print all contexts in output format.")
+        help="Print all k-mers in output format.")
     parser.add_argument(
         '-s', '--super_pattern', type=str,
         help='If a super-pattern is provided the program will only consider k-mers that match that pattern. '
-        'The total n will still be used when calculating BIC or HQ.')
+             'If for instance the "--positive" file contain all 5-mers at A->T mutated sites but the "--background" '
+             'file contains 5-mers from all sites in the genome. Then "--super_pattern NNANN" should be specified to '
+             'ignore 5-mers where A->T mutations cannot happen.')
     parser.add_argument(
         '--score', type=str, default='penalty_and_pseudo', choices=['penalty_and_pseudo', 'all_kmers', 'BIC', 'AIC', 'HQ', 'LL'],
         help='Type of score function. Default is "penalty_and_pseudo". '
@@ -191,7 +196,7 @@ def main(args = None):
     this_gen_pat = gen_pat
     best_score = 1e100
 
-    if args.nfolds is None and (len(ks) > 1 or len(args.pseudo_counts) > 1 or len(args.penalty_values) > 1):
+    if args.nfolds is None and (len(ks) > 1 or len(args.pseudo_counts) > 1 or len(args.penalty_values) > 1 or args.CV_only):
         args.nfolds = 2            
 
     if not args.nfolds is None and args.nfolds > 1:

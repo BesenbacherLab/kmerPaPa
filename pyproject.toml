@@ -9,8 +9,8 @@ description = "Tool to calculate a k-mer pattern partition from position specifi
 authors = ["Søren Besenbacher <besenbacher@clin.au.dk>"]
 license = "MIT License"
 readme = "README.md"
-repository = "https://github.com/besenbacher/kmerpapa"
-homepage = "https://github.com/besenbacher/kmerpapa"
+repository = "https://github.com/besenbacherLab/kmerpapa"
+homepage = "https://github.com/besenbacherLab/kmerpapa"
 keywords = []
 packages = [ { include = "kmerpapa", from = "src" } ]
 
