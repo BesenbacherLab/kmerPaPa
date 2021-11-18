@@ -50,6 +50,10 @@ def get_parser():
     #    'is based on the number of occurances in the reference genome then the scale factor '
     #    'should be 2*n.')
     parser.add_argument(
+        '-o', '--output', type=argparse.FileType('w'), default='-',
+        metavar='PATH',
+        help="Output file (default: standard output)")
+    parser.add_argument(
         '-f', '--CVfile', type=argparse.FileType('w'),
         help='File with training and test likelihood values from cross validation.')
     parser.add_argument(
@@ -268,7 +272,7 @@ def main(args = None):
     # Just to check that it is a partition
     #sp = PatternPartition(list(names), superPattern=gen_pat)
     # Check removed because it takes too long on large k datasets with all_kmers.
-    print(M, n_mut)
+    #print(M, n_mut)
     assert M == n_mut
     assert U == n_unmut
     assert n_mut == sum(x[0] for x in counts)
@@ -283,9 +287,9 @@ def main(args = None):
 
     if args.long_output:
         print('context', 'c_neg', 'c_pos', 'c_rate',
-                'pattern', 'p_neg', 'p_pos', 'p_rate')
+                'pattern', 'p_neg', 'p_pos', 'p_rate', file=args.output)
     else:
-        print('pattern', 'p_neg', 'p_pos', 'p_rate')
+        print('pattern', 'p_neg', 'p_pos', 'p_rate', file=args.output)
 
     for i in range(len(names)):
         pat = names[i]
@@ -294,8 +298,8 @@ def main(args = None):
         if args.long_output:
             for context in matches(pat):
                 nm, ns = contextD[context]
-                print(context, ns, nm, float(nm)/(nm+ns), pat, U, M, p)
+                print(context, ns, nm, float(nm)/(nm+ns), pat, U, M, p, file=args.output)
         else:
-            print(pat, U, M, p)
+            print(pat, U, M, p, file=args.output)
 
     return 0

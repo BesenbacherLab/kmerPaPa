@@ -1,5 +1,6 @@
 import numpy as np
 from numba import njit
+from itertools import chain
 
 code = {'A':['A'],
         'C':['C'],
