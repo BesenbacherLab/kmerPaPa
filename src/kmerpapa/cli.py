@@ -141,10 +141,10 @@ def main(args = None):
         contextD, n_unmut, n_mut = read_input(args, super_pattern)
     except Exception as e:
         parser.print_help()
-        print('='*80)
-        print("input error:")
-        print(e)
-        print('='*80)
+        print('='*80, file=sys.stderr)
+        print("input error:", file=sys.stderr)
+        print(e, file=sys.stderr)
+        print('='*80, file=sys.stderr)
 
         return 0
 
@@ -251,16 +251,15 @@ def main(args = None):
     if args.verbosity >0:
         print(f'Training on whole data set with k={best_k} alpha={best_alpha} penalty={best_penalty}' ,file=sys.stderr)
 
-    if args.greedy:
-        if args.score == 'PPCV':
-            best_score, M, U, names = \
-                greedy_penalty_plus_pseudo.greedy_partition(gen_pat, contextD, best_alpha, best_beta, best_penalty, args)
-    elif args.score == 'all_kmers':
+    if args.score == 'all_kmers':
         #TODO: maybe I should calculate best score also for all_kmers
         best_score = 0
         M = n_mut
         U = n_unmut
         names = list(matches(gen_pat))
+    elif args.greedy:
+        best_score, M, U, names = \
+            greedy_penalty_plus_pseudo.greedy_partition(gen_pat, contextD, best_alpha, best_beta, best_penalty, args)
     else:
         best_score, M, U, names = \
             bottum_up_array_w_numba.pattern_partition_bottom_up(gen_pat, contextD, best_alpha, best_beta, best_penalty, args, n_mut, n_unmut)

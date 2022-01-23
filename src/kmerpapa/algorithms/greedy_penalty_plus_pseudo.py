@@ -4,7 +4,6 @@ from kmerpapa.score_utils import get_betas
 import sys
 import numpy
 from scipy.special import xlogy, xlog1py
-#from numba import jit
 
 '''
 Handles cross validation.
@@ -21,11 +20,9 @@ def score_folds(trainM, trainU, alphas, betas, penalty):
         return 1e100
     return res
 
-#@jit
 def test_folds(trainM, trainU, testM, testU, alphas, betas):
     '''
     likelihood of test_data on training set
-    Burde jeg lave Binomial deviance?
     '''
     #p = (trainM + alphas -1)/(trainM + trainU + alphas + betas -2)
     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
@@ -87,8 +84,8 @@ def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties
     #{(a_i, p_i):[] for a in alphas for p in penalties}
     prng = np.random.RandomState(args.seed)
     for iteration in range(nit):
-        if args.verbose:
-            print(f'CV iteration {iteration}', file=sys.stderr)
+        if args.verbosity > 0:
+            print(f'greedy CV iteration {iteration}', file=sys.stderr)
         make_all_folds_contextD_kmers(contextD, U_mem, M_mem, gen_pat, prng)
         M_sum_test = M_mem.sum(axis=0) # n_mut for each fold
         U_sum_test = U_mem.sum(axis=0) # n_unmut for each fold 
@@ -125,6 +122,10 @@ def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties
                         train_s, test_s = get_test_train(pattern, trainDs[fold], testDs[fold],  alpha, betas[fold])
                         train_score[fold] += train_s
                         test_score[fold] += test_s
+                if args.verbosity > 0:
+                    print(f'CV on k={len(gen_pat)} alpha={alpha} penalty={penalty} i={iteration} test_LL={sum(test_score)}', file=sys.stderr)
+                if args.verbosity > 1:
+                    print(f'test LL for each fold: {test_score}', file=sys.stderr)
                 train_loss[(a_i, p_i)].extend(train_score)
                 test_loss[(a_i, p_i)].extend(test_score)
     best_test_loss = 1e100
@@ -134,8 +135,8 @@ def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties
         for p_i in range(len(penalties)):
             penalty = penalties[p_i]
             test = sum(test_loss[(a_i, p_i)])/nit
-            if args.verbose:
-                print(alpha, penalty, test, file = sys.stderr)
+            if not args.CVfile is None:    
+                print(len(gen_pat), alpha, penalty, test, file = args.CVfile)
             if test < best_test_loss:
                 best_values = (alpha, penalty)
                 best_test_loss = test
