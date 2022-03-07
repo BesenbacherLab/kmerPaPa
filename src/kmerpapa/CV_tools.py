@@ -95,30 +95,52 @@ def make_all_folds_contextD_kmers(contextD, U_mem, M_mem, general_pattern, prng)
         U_mem[i] = samples[i+len(contexts)]
     
 
-def make_all_folds(n_mut, n_unmut, U_mem, M_mem):
-    """Divide counts from n_mut and n_unmut into U_mem and M_mem by sampling from multivariate hypergeometric distribution
+# def make_all_folds(n_mut, n_unmut, U_mem, M_mem):
+#     """Divide counts from n_mut and n_unmut into U_mem and M_mem by sampling from multivariate hypergeometric distribution
+
+#     Args:
+#         n_mut (int np.array): number of mutated sites for each kmer
+#         n_unmut (int np.array): number of unmutated sites for each kmer
+#         U_mem ((n_folds x n_kmers) np.array): Array to be filled with unmutated counts for each kmer for each fold
+#         M_mem ((n_folds x n_kmers) np.array): Array to be filled with mutated counts for each kmer for each fold
+#         prng: numpy random number generator
+#     """
+#     itype = n_mut.dtype
+#     prng = np.random.RandomState()
+#     n_context = len(n_mut)
+#     colors = np.concatenate((n_unmut, n_mut))
+#     n = n_mut.sum() + n_unmut.sum()
+#     n_folds = U_mem.shape[1]
+#     n_samples = n//n_folds
+#     for i in range(n_folds-1):
+#         samples = sample(n_samples, colors, itype, prng)
+#         colors -= samples
+#         U_mem[:n_context,i] = samples[:n_context]
+#         M_mem[:n_context,i] = samples[n_context:]
+#     U_mem[:n_context,n_folds-1] = colors[:n_context]
+#     M_mem[:n_context,n_folds-1] = colors[n_context:]
+
+
+def make_all_folds(kmer_table, nfolds, prng):
+    """Divide counts from kmer_table into folds by sampling from multivariate hypergeometric distribution
 
     Args:
-        n_mut (int np.array): number of mutated sites for each kmer
-        n_unmut (int np.array): number of unmutated sites for each kmer
-        U_mem ((n_folds x n_kmers) np.array): Array to be filled with unmutated counts for each kmer for each fold
-        M_mem ((n_folds x n_kmers) np.array): Array to be filled with mutated counts for each kmer for each fold
+        kmer_table (array_like(int, ndim=2)): number of mutated and unmutated sites for each kmer
+        nfolds (int): number of folds
         prng: numpy random number generator
+
+    Returns:
+        folds_kmer_table (array(int, ndim=3)): kmer_table split into n_folds folds
     """
-    itype = n_mut.dtype
-    prng = np.random.RandomState()
-    n_context = len(n_mut)
-    colors = np.concatenate((n_unmut, n_mut))
-    n = n_mut.sum() + n_unmut.sum()
-    n_folds = U_mem.shape[1]
+    itype = kmer_table.dtype
+    org_shape = kmer_table.shape
+    colors = kmer_table.reshape(-1)
+    folds_kmer_table = np.zeros((nfolds,)+org_shape,dtype=itype)
+    n = kmer_table.sum()
     n_samples = n//n_folds
     for i in range(n_folds-1):
         samples = sample(n_samples, colors, itype, prng)
         colors -= samples
-        U_mem[:n_context,i] = samples[:n_context]
-        M_mem[:n_context,i] = samples[n_context:]
-    U_mem[:n_context,n_folds-1] = colors[:n_context]
-    M_mem[:n_context,n_folds-1] = colors[n_context:]
-
-
-
+        folds_kmer_table[i] = samples.reshape(org_shape)
+    folds_kmer_table[n_folds-1] = colors.reshape(org_shape)
+    return folds_kmer_table
