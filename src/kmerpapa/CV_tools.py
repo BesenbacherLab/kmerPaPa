@@ -137,10 +137,10 @@ def make_all_folds(kmer_table, nfolds, prng):
     colors = kmer_table.reshape(-1)
     folds_kmer_table = np.zeros((nfolds,)+org_shape,dtype=itype)
     n = kmer_table.sum()
-    n_samples = n//n_folds
-    for i in range(n_folds-1):
+    n_samples = n//nfolds
+    for i in range(nfolds-1):
         samples = sample(n_samples, colors, itype, prng)
         colors -= samples
         folds_kmer_table[i] = samples.reshape(org_shape)
-    folds_kmer_table[n_folds-1] = colors.reshape(org_shape)
+    folds_kmer_table[nfolds-1] = colors.reshape(org_shape)
     return folds_kmer_table
