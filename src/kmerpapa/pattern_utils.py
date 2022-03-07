@@ -109,6 +109,16 @@ for x in perm_code:
     for i in range(len(perm_code[x])):
         perm_code_no[x][perm_code[x][i]] = i
 
+
+# x,y are IUPAC patterns
+# y is sub pattern of x
+# code_no[x][y] is the number of y in the code list for x
+code_no = {}
+for x in perm_code:
+    code_no[x] = {}
+    for i in range(len(code[x])):
+        code_no[x][code[x][i]] = i
+
 # same as perm_code_no just in np.array where x and y are encoded as ord(X) and ord(Y)
 perm_code_no_np = np.full((90,90), -100, dtype=int)
 for x in perm_code:
@@ -192,6 +202,33 @@ def get_M_U(pattern, contextD, index_mut=0):
             U += nu
     return M, U
 
+def get_M_U_kmer_table(pattern, kmer_table, index_mut=0):
+    """calculates the number of mutated and unmutated sites that match a IUPAC pattern
+
+    Args:
+        pattern (str): IUPAC pattern
+        kmer_table (array_like(int, ndim=2)): The number of mutated and unmutated sites for each k-mer
+        index_mut (int, optional): To be used for multi class version. Defaults to 0.
+
+    Returns:
+        array(int, ndim=1, length=2): number of mutated (M) and unmutated (U) sites
+    """
+    M = None
+    U = None
+    res = np.zeros(2)
+    for context in matches(pattern):
+        tup = contextD[context]
+        nm = tup[index_mut]
+        nu = tup[-1]
+        if M is None:
+            M = nm
+            U = nu
+        else:
+            M += nm
+            U += nu
+    return M, U
+
+
 
 def pattern_level(pattern):
     """caculates the level of a pattern
@@ -240,6 +277,31 @@ class PatternEnumeration():
             k = num % self.gppl[i]
             num = num // self.gppl[i]
             pat = pat + perm_code[self.genpat[i]][k]
+        return pat
+
+class KmerEnumeration():
+    def __init__(self, general_pattern):
+        self.genpat = general_pattern
+        self.gppl = [len(code[x]) for x in general_pattern]
+        self.cgppl = []
+        s = 1
+        for x in self.gppl:
+            self.cgppl.append(s)
+            s *= x        
+    
+    def kmer2num(self, pattern):
+        s = 0
+        for i in range(len(self.genpat)):
+            s += code_no[self.genpat[i]][pattern[i]] * self.cgppl[i]
+        return s
+
+    def num2kmer(self, num):
+        num=int(num)
+        pat = ''
+        for i in range(len(self.genpat)):
+            k = num % self.gppl[i]
+            num = num // self.gppl[i]
+            pat = pat + code[self.genpat[i]][k]
         return pat
 
 
