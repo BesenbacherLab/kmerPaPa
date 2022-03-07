@@ -4,6 +4,9 @@ from kmerpapa.score_utils import get_betas
 import sys
 import numpy
 from scipy.special import xlogy, xlog1py
+from skopt.space import Real, Integer
+from skopt.utils import use_named_args
+
 
 '''
 Handles cross validation.
@@ -12,6 +15,7 @@ Do I need backtrack for the Cross-validation?
 Maybe i just need CV to estimate best meta-par value
 And then return best papa for all data using that meta-par.
 '''
+
 
 def score_folds(trainM, trainU, alphas, betas, penalty):
     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
@@ -22,7 +26,7 @@ def score_folds(trainM, trainU, alphas, betas, penalty):
 
 def test_folds(trainM, trainU, testM, testU, alphas, betas):
     '''
-    likelihood of test_data on training set
+    likelihood of test_data
     '''
     #p = (trainM + alphas -1)/(trainM + trainU + alphas + betas -2)
     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
@@ -39,6 +43,12 @@ def get_test_train(pattern, trainD, testD,  alphas, betas):
     train_score = test_folds(M_train, U_train, M_train, U_train, alphas, betas)
     test_score = test_folds(M_train, U_train, M_test, U_test, alphas, betas)
     return train_score, test_score
+
+def get_test_logLik(pattern, trainD, testD,  alphas, betas):
+    M_train,U_train = get_M_U(pattern, trainD)
+    M_test, U_test = get_M_U(pattern, testD)
+    test_score = test_folds(M_train, U_train, M_test, U_test, alphas, betas)
+    return test_score
 
 def greedy_res(pattern, contextD, alphas, betas, penalty):
     if pattern in contextD:
@@ -69,6 +79,37 @@ def greedy_res(pattern, contextD, alphas, betas, penalty):
             return s1+s2, papa1+papa2
         else:
             return best_score, best_papa
+
+def greedy_res_num(pattern_num, PE, kmer_num_counts, alphas, betas, penalty):
+    if pattern in contextD:
+        return get_score(pattern, contextD, alphas, betas, penalty), [pattern]
+    else:
+        best_score = get_score(pattern, contextD, alphas, betas, penalty)
+        best_papa = [pattern]
+        for i in range(len(pattern)):#[::-1]:
+            if pattern[i] not in complements:
+                continue
+            for c1, c2 in complements[pattern[i]]:
+                pat1 = pattern[:i] + c1 + pattern[i+1:]
+                pat2 = pattern[:i] + c2 + pattern[i+1:]
+
+                score1 = get_score(pat1, contextD, alphas, betas, penalty)
+                score2 = get_score(pat2, contextD, alphas, betas, penalty)
+
+                s = score1 + score2
+                if s < best_score:
+                    best_score = s
+                    best_papa = [pat1, pat2]
+
+        if len(best_papa) > 1:
+            pat1, pat2 = best_papa
+            #print('split', pat1, pat2)
+            s1, papa1 = greedy_res(pat1, contextD, alphas, betas, penalty)
+            s2, papa2 = greedy_res(pat2, contextD, alphas, betas, penalty)
+            return s1+s2, papa1+papa2
+        else:
+            return best_score, best_papa
+
 
 def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties, index_mut=0):
     resD = {}
@@ -147,3 +188,79 @@ def greedy_partition(gen_pat, contextD, alpha, beta, penalty, args):
     M, U = get_M_U(gen_pat, contextD)
     return best_score, M, U, papa
 
+
+def CrossValidation():
+    def __init__(self, genpat, contextD, nfolds=2, nit=1, seed=None, verbosity=1):
+        self.nfolds = nfolds
+        self.nit = nit
+        self.seed = seed
+        self.genpat = genpat
+        self.npat = generality(gen_pat)
+        self.U_mem = numpy.zeros((self.npat,nfolds), dtype=numpy.uint64)
+        self.M_mem = numpy.zeros((self.npat,nfolds), dtype=numpy.uint64)
+        self.M_sum_test = numpy.zeros(nfolds)
+        self.U_sum_test = numpy.zeros(nfolds)
+        make_all_folds_contextD_kmers(contextD, U_mem, M_mem, gen_pat, prng)
+        M_sum_test = M_mem.sum(axis=0) # n_mut for each fold
+        U_sum_test = U_mem.sum(axis=0) # n_unmut for each fold 
+        self.M_sum_train = sum(M_sum_test) - M_sum_test
+        self.U_sum_train = sum(U_sum_test) - U_sum_test
+        #p_all = M_sum_test/(M_sum_test + U_sum_test)
+        #LL_intercept = -2*(xlogy(M_sum_test, p_all) + xlog1py(U_sum_test, -p_all))
+
+        trainDs = []
+        testDs = []
+        for fold in range(nfolds):
+            trainDs.append({})
+            testDs.append({})
+
+        for i, context in enumerate(matches(self.gen_pat)):
+            M_test = self.M_mem[i]
+            U_test = self.U_mem[i]
+            self.M_train = sum(M_test) - M_test
+            self.U_train = sum(U_test) - U_test
+            for fold in range(nfolds):
+                trainDs[fold][context] = (self.M_train[fold], self.U_train[fold])
+                testDs[fold][context] = (M_test[fold], U_test[fold])
+
+
+    def loglik(self, penalty, alpha):
+        """Calculate test Log Likelihood
+        Args:
+            penalty (float): complexity penalty
+            alpha (float): pseudo count
+        """
+        #TODO: I am not allowing repeats right now!
+        #Should probably allow for it???
+        #Or do I only want repeat for grid search???
+        betas = get_betas(alpha, self.M_sum_train, self.U_sum_train)
+        test_score = 0.0
+        for fold in range(nf):
+            best_score, papa = greedy_res(self.gen_pat, self.trainDs[fold], alpha, betas[fold], penalty)
+            for pattern in papa:
+                train_s, test_s = get_test_logLik(pattern, self.trainDs[fold], self.testDs[fold],  alpha, betas[fold])
+                test_score += test_s
+
+class GridSearchCV:
+    def __init__(self, genpat, penalties, pseudo_counts, nfolds=2, nit=1, seed=None):
+        self.CV = CrossValidation(genpat, nfolds=nfolds, nit=nit, seed=seed)
+        self.penalties = penalties
+        self.pseudo_counts = pseudo_counts
+
+class BaysianOptimizationCV:
+    def __init__(self, genpat, nfolds=2, nit=1, seed=None):
+        self.CV = CrossValidation(genpat, nfolds=nfolds, nit=nit, seed=seed)
+        self.search_space = [
+            Real(name='penalty', low=0.5, high=30),
+            Real(name='pseudo', low=0.1, high=100)
+        ]
+
+
+
+    
+    test_loss = {(a_i, p_i):[] for a_i in range(len(alphas)) for p_i in range(len(penalties))}
+    train_loss = {(a_i, p_i):[] for a_i in range(len(alphas)) for p_i in range(len(penalties))}
+    #{(a_i, p_i):[] for a in alphas for p in penalties}
+    prng = np.random.RandomState(args.seed)
+    for iteration in range(nit):
+    
