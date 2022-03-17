@@ -334,6 +334,23 @@ class KmerEnumeration():
             return L
         return f
 
+    def get_matches_num2(self):
+        genpat = self.genpat
+        cgppl = np.array(self.cgppl, dtype=np.uint32)
+        @njit
+        def f(pattern):
+            if len(pattern) == 0:
+                yield 0
+            else:
+                for y in f(pattern[1:]):
+                    for j in range(code_len_ord_np[ord(pattern[0])]):
+                        nuc_ord = code_np[ord(pattern[i])][j]
+                        yield x+code_no_np[ord(genpat[i])][nuc_ord] * cgppl[i]
+                    yield x+y
+        return f
+
+
+
     def num2kmer(self, num):
         num=int(num)
         pat = ''

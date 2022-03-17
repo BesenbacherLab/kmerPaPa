@@ -18,7 +18,6 @@ Maybe i just need CV to estimate best meta-par value
 And then return best papa for all data using that meta-par.
 '''
 
-# @njit
 # def score_folds(trainM, trainU, alphas, betas, penalty):
 #     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
 #     res = -2*(xlogy(trainM, p) + xlog1py(trainU,-p)) + penalty
@@ -115,26 +114,48 @@ def get_score_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num)
     return score_folds(M_U[0], M_U[1], alpha, beta, penalty)
 
 @njit
+def get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num):
+    M_U = numpy.zeros(2)
+    for i in matches_num(pattern):
+        M_U += kmer_table[i]
+    trainM = M_U[0]
+    trainU = M_U[1]
+    p = (trainM + alpha)/(trainM + trainU + alpha + beta)
+    s = penalty
+    if trainM > 0:
+        s += -2.0 * trainM*np.log(p)
+    if trainU > 0:
+        s += -2.0 * trainU*np.log(1-p)
+    return s
+
+
+@njit
 def get_test_logLik_kmer_table(pattern, train_kmer_table, test_kmer_table,  alpha, beta, matches_num):
     M_U_train = get_M_U_kmer_table(pattern, train_kmer_table, matches_num)
     M_U_test = get_M_U_kmer_table(pattern, test_kmer_table, matches_num)
     return test_folds(M_U_train[0], M_U_train[1], M_U_test[0], M_U_test[1], alpha, beta)
 
+@njit
 def greedy_res_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num):
     if generality(pattern) == 1:
-        return get_score_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num), [pattern]
+        return get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num), [pattern]
     else:
-        best_score = get_score_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num)
+        best_score = get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num)
         best_papa = [pattern]
         for i in range(len(pattern)):#[::-1]:
-            if pattern[i] not in complements:
-                continue
-            for c1, c2 in complements[pattern[i]]:
+            pat_i_ord = ord(pattern[i])
+            #if pattern[i] not in complements:
+            #    continue
+            for j in range(n_complements[pat_i_ord]):                
+            #for c1, c2 in complements[pattern[i]]:
+                c1 = chr(complements_tab_1[pat_i_ord][j])
+                c2 = chr(complements_tab_2[pat_i_ord][j])
+
                 pat1 = pattern[:i] + c1 + pattern[i+1:]
                 pat2 = pattern[:i] + c2 + pattern[i+1:]
 
-                score1 = get_score_kmer_table(pat1, kmer_table, alpha, beta, penalty, matches_num)
-                score2 = get_score_kmer_table(pat2, kmer_table, alpha, beta, penalty, matches_num)
+                score1 = get_score_kmer_table2(pat1, kmer_table, alpha, beta, penalty, matches_num)
+                score2 = get_score_kmer_table2(pat2, kmer_table, alpha, beta, penalty, matches_num)
 
                 s = score1 + score2
                 if s < best_score:
