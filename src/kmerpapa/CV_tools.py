@@ -121,7 +121,7 @@ def make_all_folds_contextD_kmers(contextD, U_mem, M_mem, general_pattern, prng)
 #     M_mem[:n_context,n_folds-1] = colors[n_context:]
 
 
-def make_all_folds(kmer_table, nfolds, prng):
+def make_all_folds(kmer_table, n_folds, n_repeats, prng):
     """Divide counts from kmer_table into folds by sampling from multivariate hypergeometric distribution
 
     Args:
@@ -134,13 +134,14 @@ def make_all_folds(kmer_table, nfolds, prng):
     """
     itype = kmer_table.dtype
     org_shape = kmer_table.shape
-    colors = kmer_table.reshape(-1)
-    folds_kmer_table = np.zeros((nfolds,)+org_shape,dtype=itype)
+    folds_kmer_table = np.zeros((n_repeats, n_folds,)+org_shape,dtype=itype)
     n = kmer_table.sum()
-    n_samples = n//nfolds
-    for i in range(nfolds-1):
-        samples = sample(n_samples, colors, itype, prng)
-        colors -= samples
-        folds_kmer_table[i] = samples.reshape(org_shape)
-    folds_kmer_table[nfolds-1] = colors.reshape(org_shape)
+    n_samples = n//n_folds
+    for i in range(n_repeats):
+        colors = np.copy(kmer_table).reshape(-1)
+        for j in range(n_folds-1):
+            samples = sample(n_samples, colors, itype, prng)
+            colors -= samples
+            folds_kmer_table[i][j] = samples.reshape(org_shape)
+        folds_kmer_table[i][n_folds-1] = colors.reshape(org_shape)
     return folds_kmer_table

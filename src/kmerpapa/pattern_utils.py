@@ -18,6 +18,12 @@ code = {'A':['A'],
         'V':['A', 'C', 'G'],
         'N':['A', 'C', 'G', 'T']}
 
+code_np = np.zeros((90,4), dtype=int)
+for x in code:
+    for i in range(len(code[x])):
+        code_np[ord(x),i] = ord(code[x][i])
+
+
 # dictionary from IUPAC character to nucleotide set
 set_code = {}
 for x in code:
@@ -100,8 +106,8 @@ for x in perm_code:
     set_perm_code[x] = frozenset(perm_code[x])
 
 
-# x,y are IUPAC patterns
-# y is sub pattern of x
+# x,y are IUPAC codes
+# y is sub code of x
 # perm_code_no[x][y] is the number of y in the perm_code list for x
 perm_code_no = {}
 for x in perm_code:
@@ -110,14 +116,20 @@ for x in perm_code:
         perm_code_no[x][perm_code[x][i]] = i
 
 
-# x,y are IUPAC patterns
-# y is sub pattern of x
+# x is IUPAC code
+# y is nucleotide
 # code_no[x][y] is the number of y in the code list for x
 code_no = {}
-for x in perm_code:
+for x in code:
     code_no[x] = {}
     for i in range(len(code[x])):
         code_no[x][code[x][i]] = i
+
+# same as code_no just in np.array where x and y are encoded as ord(X) and ord(Y)
+code_no_np = np.full((90,90), -100, dtype=int)
+for x in code:
+    for i in range(len(code[x])):
+        code_no_np[ord(x),ord(code[x][i])] = i
 
 # same as perm_code_no just in np.array where x and y are encoded as ord(X) and ord(Y)
 perm_code_no_np = np.full((90,90), -100, dtype=int)
@@ -295,6 +307,33 @@ class KmerEnumeration():
             s += code_no[self.genpat[i]][pattern[i]] * self.cgppl[i]
         return s
 
+    def get_kmer2num(self):
+        genpat = self.genpat
+        cgppl = np.array(self.cgppl, dtype=np.uint32)
+        @njit
+        def f(kmer):
+            s = 0
+            for i in range(len(genpat)):
+                s += code_no_np[ord(genpat[i])][ord(kmer[i])] * cgppl[i]
+            return s
+        return f
+
+    def get_matches_num(self):
+        genpat = self.genpat
+        cgppl = np.array(self.cgppl, dtype=np.uint32)
+        @njit
+        def f(pattern):
+            L = [0]
+            for i in range(len(genpat)-1,-1,-1):
+                L2 = []
+                for x in L:
+                    for j in range(code_len_ord_np[ord(pattern[i])]):
+                        nuc_ord = code_np[ord(pattern[i])][j]
+                        L2.append(x+code_no_np[ord(genpat[i])][nuc_ord] * cgppl[i])
+                L = L2
+            return L
+        return f
+
     def num2kmer(self, num):
         num=int(num)
         pat = ''
@@ -343,6 +382,7 @@ def match(pattern, context):
             return False
     return True
 
+
 def matches(pattern):
     """generate all k-mers that match a pattern
 
@@ -358,6 +398,44 @@ def matches(pattern):
         for y in matches(pattern[1:]):
             for x in code[pattern[0]]:
                 yield x+y
+
+@njit
+def matches_numba(pattern):
+    """generate all k-mers that match a pattern
+
+    Args:
+        pattern (str): IUPAC pattern
+
+    Yields:
+        str: k-mer
+    """
+    if len(pattern) == 0:
+        yield ''
+    else:
+        for y in matches_numba(pattern[1:]):
+            first_code = ord(pattern[0])
+            for i in range(len(code_len_ord_np[first_code])):
+                yield chr(code_np[first_code][i]) + y
+
+# @njit
+# def matches_numba_kmernum(pattern):
+#     """generate all k-mers that match a pattern
+
+#     Args:
+#         pattern (str): IUPAC pattern
+
+#     Yields:
+#         str: k-mer
+#     """
+#     for y in range(len(pattern)):
+
+
+#         for y in matches_numba(pattern[1:]):
+#             first_code = ord(pattern[0])
+#             for i in range(len(code_len_ord_np[first_code])):
+#                 yield chr(code_np[first_code][i]) + y
+
+
 
 def subpatterns_level(pattern, level):
     cur_level = pattern_level(pattern)
@@ -398,8 +476,10 @@ def subpatterns_level_ord_new(pattern, cur_level, level):
             yield (x,)
 
 code_lev_ord_np = np.full(90,-100,dtype=int)
+code_len_ord_np = np.full(90,-100,dtype=int)
 for x in code_lev_ord:
     code_lev_ord_np[x] = code_lev_ord[x]
+    code_len_ord_np[x] = code_lev_ord[x] + 1
 
 @njit
 def subpatterns_level_ord_np(pattern, cur_level, level):
@@ -442,7 +522,7 @@ def subpatterns(pattern):
             for x in perm_code[pattern[0]]:
                 yield x+y
 
-
+@njit
 def generality(pat):
     """Number of kmers that match a given pattern
 
@@ -454,7 +534,8 @@ def generality(pat):
     """
     res = 1
     for x in pat:
-        res *= len(code[x])
+        res *= code_len_ord_np[ord(x)]
+    #    res *= len(code[x])
     return res
 
 def pattern_max(general_pattern):
@@ -472,7 +553,13 @@ def pattern_max(general_pattern):
     return res
 
 
-
-
-
+def matches_list(pattern):
+    L = ['']
+    for i in range(len(pattern)-1, -1, -1):
+        L2 = []
+        for x in L:
+            for y in code[pattern[i]]:
+                L2.append(y+x)
+        L = L2
+    return(L)
 

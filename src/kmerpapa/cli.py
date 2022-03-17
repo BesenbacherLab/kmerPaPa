@@ -12,6 +12,7 @@ from kmerpapa.algorithms import bottum_up_array_penalty_plus_pseudo_CV
 from kmerpapa.algorithms import greedy_penalty_plus_pseudo
 from kmerpapa.algorithms import bottum_up_array_w_numba
 
+
 def get_parser():
     """
     Return the CLI argument parser.
@@ -65,6 +66,9 @@ def get_parser():
     parser.add_argument(
         '--greedy', action='store_true',
         help="Use a fast greedy heuristic to find a (hopefully) good but not necessarily optimal pattern partition.")
+    parser.add_argument(
+        '--BayesOpt', action='store_true',
+        help="Using Bayesian Optimization to fit pseudo_count and penalty with Cross Validation. Sofar only works in combination with --greedy")
     parser.add_argument(
         '--greedyCV', action='store_true',
         help="Use a greedy heuristic during CV but use optimal algorithm afterwards")
@@ -165,9 +169,10 @@ def main(args = None):
         elif args.score == 'all_kmers':
             pass
         elif args.score == 'penalty_and_pseudo':
-            args.penalty_values = [log(len(contextD))]
-            if args.verbosity > 0:
-                print(f'penalty values not set. Using {args.penalty_values[0]}', file=sys.stderr)
+            if not args.BayesOpt:
+                args.penalty_values = [log(len(contextD))]
+                if args.verbosity > 0:
+                    print(f'penalty values not set. Using {args.penalty_values[0]}', file=sys.stderr)
         else:
             assert False, f"illegal score option {args.score}"
 
@@ -202,7 +207,6 @@ def main(args = None):
 
     if args.nfolds is None and (len(ks) > 1 or len(args.pseudo_counts) > 1 or len(args.penalty_values) > 1 or args.CV_only):
         args.nfolds = 2            
-
     if not args.nfolds is None and args.nfolds > 1:
         for k in ks:
             if args.verbosity > 0:
@@ -211,7 +215,16 @@ def main(args = None):
                 this_contextD, this_gen_pat = downsize_contextD(this_contextD, this_gen_pat, k)
             if args.greedy or args.greedyCV:
                 assert args.score != 'all_kmers', 'greedy option cannot be used wil all-kmers'
-                this_alpha, this_penalty, test_score = greedy_penalty_plus_pseudo.greedy_partition_CV(this_gen_pat, this_contextD, args.pseudo_counts, args, n_mut, n_unmut, args.penalty_values)
+                if args.BayesOpt:
+                    CV = greedy_penalty_plus_pseudo.BaysianOptimizationCV(gen_pat, contextD, args.nfolds, args.iterations, args.seed)
+                    this_alpha, this_penalty, test_score = CV.get_best_a_c()
+                else:
+                    #Grid Search
+                    CV = greedy_penalty_plus_pseudo.GridSearchCV(gen_pat, contextD, args.penalty_values, args.pseudo_counts, args.nfolds, args.iterations, args.seed)
+                    this_alpha, this_penalty, test_score = CV.get_best_a_c()
+                #this_alpha2, this_penalty2, test_score2 = greedy_penalty_plus_pseudo.greedy_partition_CV(this_gen_pat, this_contextD, [this_alpha], args, n_mut, n_unmut, [this_penalty])
+                #print(test_score, test_score3, test_score2)
+                #this_alpha, this_penalty, test_score = greedy_penalty_plus_pseudo.greedy_partition_CV(this_gen_pat, this_contextD, args.pseudo_counts, args, n_mut, n_unmut, args.penalty_values)
             elif args.score == 'all_kmers':
                 this_alpha, test_score =  kmerpapa.algorithms.all_kmers_CV.all_kmers(this_gen_pat, this_contextD, args.pseudo_counts, args, n_mut, n_unmut)
                 this_penalty = None

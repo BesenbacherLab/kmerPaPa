@@ -34,3 +34,6 @@ def get_betas(alpha, M, U):
     betas = (alpha*(1.0-my))/my
     return betas
 
+
+    
+
