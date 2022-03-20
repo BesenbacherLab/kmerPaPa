@@ -334,6 +334,44 @@ class KmerEnumeration():
             return L
         return f
 
+    def get_matches_num_np(self):
+        genpat = self.genpat
+        cgppl = np.array(self.cgppl, dtype=np.uint32)
+        @njit
+        def f(pattern):
+            L = np.array(generality(pattern))
+            index = 1
+            L[0] = 0
+            for i in range(len(genpat)-1,-1,-1):
+                L2 = []
+                index2 = 0
+                for k in range(index):
+                    for j in range(code_len_ord_np[ord(pattern[i])]):
+                        nuc_ord = code_np[ord(pattern[i])][j]
+                        L2.append(x+code_no_np[ord(genpat[i])][nuc_ord] * cgppl[i])
+                        L[index2]
+                        index2 +=1
+
+                L = L2
+            return L
+        return f
+
+    def get_matches_num_ord(self):
+        genpat = np.array([ord(x) for x in self.genpat])
+        cgppl = np.array(self.cgppl) # , dtype=np.uint32
+        @njit
+        def f(pattern):
+            L = [0]
+            for i in range(len(genpat)-1,-1,-1):
+                L2 = []
+                for x in L:
+                    for j in range(code_len_ord_np[pattern[i]]):
+                        nuc_ord = code_np[pattern[i]][j]
+                        L2.append(x+code_no_np[genpat[i]][nuc_ord] * cgppl[i])
+                L = L2
+            return L
+        return f
+
     def get_matches_num2(self):
         genpat = self.genpat
         cgppl = np.array(self.cgppl, dtype=np.uint32)
@@ -552,6 +590,23 @@ def generality(pat):
     res = 1
     for x in pat:
         res *= code_len_ord_np[ord(x)]
+    #    res *= len(code[x])
+    return res
+
+
+@njit
+def generality_ord(pat):
+    """Number of kmers that match a given pattern
+
+    Args:
+        pat (str): IUPAC pattern
+
+    Returns:
+        int: Number of kmers that match pat
+    """
+    res = 1
+    for x in pat:
+        res *= code_len_ord_np[x]
     #    res *= len(code[x])
     return res
 

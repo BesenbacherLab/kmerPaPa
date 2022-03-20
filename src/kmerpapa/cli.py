@@ -273,6 +273,7 @@ def main(args = None):
     elif args.greedy:
         best_score, M, U, names = \
             greedy_penalty_plus_pseudo.greedy_partition(gen_pat, contextD, best_alpha, best_beta, best_penalty, args)
+
     else:
         best_score, M, U, names = \
             bottum_up_array_w_numba.pattern_partition_bottom_up(gen_pat, contextD, best_alpha, best_beta, best_penalty, args, n_mut, n_unmut)

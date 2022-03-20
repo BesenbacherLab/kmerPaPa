@@ -1,3 +1,4 @@
+from functools import cache
 from kmerpapa.pattern_utils import *
 from kmerpapa.CV_tools import make_all_folds, make_all_folds_contextD_kmers
 from kmerpapa.score_utils import get_betas
@@ -8,6 +9,7 @@ from skopt.space import Real, Integer
 from skopt.utils import use_named_args
 from skopt import gp_minimize
 from numba import njit
+import math
 
 
 '''
@@ -104,9 +106,12 @@ def greedy_res(pattern, contextD, alphas, betas, penalty):
 @njit
 def get_M_U_kmer_table(pattern, kmer_table, matches_num):
     M_U = numpy.zeros(2)
+    #indx = np.array(matches_num(pattern))
+    #return kmer_table[indx].sum(0)
     for i in matches_num(pattern):
         M_U += kmer_table[i]
     return M_U
+
 
 @njit
 def get_score_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num):
@@ -123,9 +128,9 @@ def get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num
     p = (trainM + alpha)/(trainM + trainU + alpha + beta)
     s = penalty
     if trainM > 0:
-        s += -2.0 * trainM*np.log(p)
+        s += -2.0 * trainM*numpy.log(p)
     if trainU > 0:
-        s += -2.0 * trainU*np.log(1-p)
+        s += -2.0 * trainU*numpy.log(1-p)
     return s
 
 
@@ -134,6 +139,12 @@ def get_test_logLik_kmer_table(pattern, train_kmer_table, test_kmer_table,  alph
     M_U_train = get_M_U_kmer_table(pattern, train_kmer_table, matches_num)
     M_U_test = get_M_U_kmer_table(pattern, test_kmer_table, matches_num)
     return test_folds(M_U_train[0], M_U_train[1], M_U_test[0], M_U_test[1], alpha, beta)
+
+# def get_test_logLik_kmer_table(pattern, train_kmer_table, test_kmer_table,  alpha, beta, matches_num):
+#     M_U_train = get_M_U_kmer_table(pattern, train_kmer_table, matches_num)
+#     M_U_test = get_M_U_kmer_table(pattern, test_kmer_table, matches_num)
+#     return test_folds(M_U_train[0], M_U_train[1], M_U_test[0], M_U_test[1], alpha, beta)
+
 
 @njit
 def greedy_res_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num):
@@ -169,6 +180,45 @@ def greedy_res_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num
             return s1+s2, papa1+papa2
         else:
             return best_score, best_papa
+
+@njit
+def greedy_res_kmer_table_ord(pattern, kmer_table, alpha, beta, penalty, matches_num):
+    if generality_ord(pattern) == 1:
+        return get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num), [pattern]
+    else:
+        best_score = get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num)
+        best_papa = [pattern]
+        pat1 = np.copy(pattern)
+        pat2 = np.copy(pattern)
+        for i in range(len(pattern)):#[::-1]:
+            #if pattern[i] not in complements:
+            #    continue
+            for j in range(n_complements[pattern[i]]):                
+            #for c1, c2 in complements[pattern[i]]:
+                c1 = complements_tab_1[pattern[i]][j]
+                c2 = complements_tab_2[pattern[i]][j]
+
+                pat1[i] = c1
+                pat2[i] = c2
+
+                score1 = get_score_kmer_table2(pat1, kmer_table, alpha, beta, penalty, matches_num)
+                score2 = get_score_kmer_table2(pat2, kmer_table, alpha, beta, penalty, matches_num)
+
+                s = score1 + score2
+                if s < best_score:
+                    best_score = s
+                    best_papa = [np.copy(pat1), np.copy(pat2)]
+            pat1[i] = pattern[i]
+            pat2[i] = pattern[i]
+
+        if len(best_papa) > 1:
+            pat1, pat2 = best_papa
+            s1, papa1 = greedy_res_kmer_table_ord(pat1, kmer_table, alpha, beta, penalty, matches_num)
+            s2, papa2 = greedy_res_kmer_table_ord(pat2, kmer_table, alpha, beta, penalty, matches_num)
+            return s1+s2, papa1+papa2
+        else:
+            return best_score, best_papa
+
 
 
 def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties, index_mut=0):
@@ -244,10 +294,27 @@ def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties
     return best_values[0], best_values[1], best_test_loss
 
 
-def greedy_partition(gen_pat, contextD, alpha, beta, penalty, args):
+def greedy_partition_old(gen_pat, contextD, alpha, beta, penalty, args):
     best_score, papa = greedy_res(gen_pat, contextD, alpha, beta, penalty)
     M, U = get_M_U(gen_pat, contextD)
     return best_score, M, U, papa
+
+
+def greedy_partition(genpat, contextD, alpha, beta, penalty, args):
+    KE = KmerEnumeration(genpat)
+    npat = generality(genpat)
+    kmer_table = numpy.zeros((npat,2), dtype=numpy.uint64)
+    matches_num_ord = KE.get_matches_num_ord()
+    for i, context in enumerate(matches(genpat)):
+        n_mut, n_unmut = contextD[context]
+        kmer_table[i,0] = n_mut
+        kmer_table[i,1] = n_unmut
+    MU = kmer_table.sum(axis=0)
+    beta = get_betas(alpha, MU[0],  MU[1])
+    genpat_ord = np.array([ord(x) for x in genpat])
+    best_score, papa_ord = greedy_res_kmer_table_ord(genpat_ord, kmer_table, alpha, beta, penalty, matches_num_ord)
+    papa = [''.join([chr(x) for x in y]) for y in papa_ord]
+    return best_score, MU[0], MU[1], papa
 
 
 class CrossValidation:
@@ -261,12 +328,13 @@ class CrossValidation:
         self.kmer_table = numpy.zeros((self.npat,2), dtype=numpy.uint64)
         prng = np.random.RandomState(seed)
         self.matches_num = self.KE.get_matches_num()
+        self.matches_num_ord = self.KE.get_matches_num_ord()
         for i, context in enumerate(matches(self.genpat)):
             n_mut, n_unmut = contextD[context]
             self.kmer_table[i,0] = n_mut
             self.kmer_table[i,1] = n_unmut
         self.fold_kmer_table = make_all_folds(self.kmer_table, nfolds, nit, prng)
-
+        self.genpat_ord = np.array([ord(x) for x in self.genpat])
 
     def loglik(self, alpha, penalty):
         """Calculate test Log Likelihood
@@ -283,10 +351,10 @@ class CrossValidation:
                 train_kmer_table = self.kmer_table - self.fold_kmer_table[repeat][fold]
                 train_MU = train_kmer_table.sum(axis=0)
                 beta = get_betas(alpha, train_MU[0],  train_MU[1])
-                best_score, papa = greedy_res_kmer_table(self.genpat, train_kmer_table, alpha, beta, penalty, self.matches_num)
+                best_score, papa = greedy_res_kmer_table_ord(self.genpat_ord, train_kmer_table, alpha, beta, penalty, self.matches_num_ord)
                 for pattern in papa:
-                    this_ll = get_test_logLik_kmer_table(pattern, train_kmer_table, self.fold_kmer_table[repeat][fold], alpha, beta, self.matches_num)
-                    test_ll +=  this_ll            
+                    this_ll = get_test_logLik_kmer_table(pattern, train_kmer_table, self.fold_kmer_table[repeat][fold], alpha, beta, self.matches_num_ord)
+                    test_ll +=  this_ll        
             ll_list.append(test_ll)        
         #print(penalty, alpha, sum(ll_list)/len(ll_list))
         return sum(ll_list)/len(ll_list)
