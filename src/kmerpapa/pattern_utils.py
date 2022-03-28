@@ -214,32 +214,6 @@ def get_M_U(pattern, contextD, index_mut=0):
             U += nu
     return M, U
 
-def get_M_U_kmer_table(pattern, kmer_table, index_mut=0):
-    """calculates the number of mutated and unmutated sites that match a IUPAC pattern
-
-    Args:
-        pattern (str): IUPAC pattern
-        kmer_table (array_like(int, ndim=2)): The number of mutated and unmutated sites for each k-mer
-        index_mut (int, optional): To be used for multi class version. Defaults to 0.
-
-    Returns:
-        array(int, ndim=1, length=2): number of mutated (M) and unmutated (U) sites
-    """
-    M = None
-    U = None
-    res = np.zeros(2)
-    for context in matches(pattern):
-        tup = contextD[context]
-        nm = tup[index_mut]
-        nu = tup[-1]
-        if M is None:
-            M = nm
-            U = nu
-        else:
-            M += nm
-            U += nu
-    return M, U
-
 
 
 def pattern_level(pattern):

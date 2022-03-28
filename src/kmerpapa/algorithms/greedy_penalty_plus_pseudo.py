@@ -3,32 +3,20 @@ from kmerpapa.pattern_utils import *
 from kmerpapa.CV_tools import make_all_folds, make_all_folds_contextD_kmers
 from kmerpapa.score_utils import get_betas
 import sys
-import numpy
+import numpy as np
 from scipy.special import xlogy, xlog1py
 from skopt.space import Real, Integer
 from skopt.utils import use_named_args
 from skopt import gp_minimize
 from numba import njit
-import math
 
 
 '''
-Handles cross validation.
-Should model-selection be determined based on cross validation?
-Do I need backtrack for the Cross-validation?
-Maybe i just need CV to estimate best meta-par value
-And then return best papa for all data using that meta-par.
+Implementation of greedy algorithm.
 '''
-
-# def score_folds(trainM, trainU, alphas, betas, penalty):
-#     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
-#     res = -2*(xlogy(trainM, p) + xlog1py(trainU,-p)) + penalty
-#     if res<0:
-#         return 1e100
-#     return res
 
 @njit
-def score_folds(trainM, trainU, alphas, betas, penalty):
+def train_loss(trainM, trainU, alphas, betas, penalty):
     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
     s = penalty
     if trainM > 0:
@@ -38,7 +26,7 @@ def score_folds(trainM, trainU, alphas, betas, penalty):
     return s
 
 @njit
-def test_folds(trainM, trainU, testM, testU, alphas, betas):
+def test_logLik(trainM, trainU, testM, testU, alphas, betas):
     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
     s = 0.0
     if testM > 0:
@@ -47,30 +35,22 @@ def test_folds(trainM, trainU, testM, testU, alphas, betas):
         s += -2.0 * testU*np.log(1-p)
     return s
 
-# def test_folds(trainM, trainU, testM, testU, alphas, betas):
-#     '''
-#     likelihood of test_data
-#     '''
-#     #p = (trainM + alphas -1)/(trainM + trainU + alphas + betas -2)
-#     p = (trainM + alphas)/(trainM + trainU + alphas + betas)
-#     return -2 *(xlogy(testM, p) + xlog1py(testU, -p))
-
 
 def get_score(pattern, contextD, alpha, beta, penalty):
     M,U = get_M_U(pattern, contextD)
-    return score_folds(M, U, alpha, beta, penalty)
+    return train_loss(M, U, alpha, beta, penalty)
 
 def get_test_train(pattern, trainD, testD,  alphas, betas):
     M_train,U_train = get_M_U(pattern, trainD)
     M_test, U_test = get_M_U(pattern, testD)
-    train_score = test_folds(M_train, U_train, M_train, U_train, alphas, betas)
-    test_score = test_folds(M_train, U_train, M_test, U_test, alphas, betas)
+    train_score = test_logLik(M_train, U_train, M_train, U_train, alphas, betas)
+    test_score = test_logLik(M_train, U_train, M_test, U_test, alphas, betas)
     return train_score, test_score
 
 def get_test_logLik(pattern, trainD, testD,  alphas, betas):
     M_train,U_train = get_M_U(pattern, trainD)
     M_test, U_test = get_M_U(pattern, testD)
-    test_score = test_folds(M_train, U_train, M_test, U_test, alphas, betas)
+    test_score = test_logLik(M_train, U_train, M_test, U_test, alphas, betas)
     return test_score
 
 def greedy_res(pattern, contextD, alphas, betas, penalty):
@@ -105,7 +85,7 @@ def greedy_res(pattern, contextD, alphas, betas, penalty):
 
 @njit
 def get_M_U_kmer_table(pattern, kmer_table, matches_num):
-    M_U = numpy.zeros(2)
+    M_U = np.zeros(2)
     #indx = np.array(matches_num(pattern))
     #return kmer_table[indx].sum(0)
     for i in matches_num(pattern):
@@ -114,13 +94,13 @@ def get_M_U_kmer_table(pattern, kmer_table, matches_num):
 
 
 @njit
-def get_score_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num):
+def get_loss_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num):
     M_U = get_M_U_kmer_table(pattern, kmer_table, matches_num)
-    return score_folds(M_U[0], M_U[1], alpha, beta, penalty)
+    return train_loss(M_U[0], M_U[1], alpha, beta, penalty)
 
 @njit
-def get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num):
-    M_U = numpy.zeros(2)
+def get_loss_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num):
+    M_U = np.zeros(2)
     for i in matches_num(pattern):
         M_U += kmer_table[i]
     trainM = M_U[0]
@@ -128,9 +108,9 @@ def get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num
     p = (trainM + alpha)/(trainM + trainU + alpha + beta)
     s = penalty
     if trainM > 0:
-        s += -2.0 * trainM*numpy.log(p)
+        s += -2.0 * trainM*np.log(p)
     if trainU > 0:
-        s += -2.0 * trainU*numpy.log(1-p)
+        s += -2.0 * trainU*np.log(1-p)
     return s
 
 
@@ -138,20 +118,15 @@ def get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num
 def get_test_logLik_kmer_table(pattern, train_kmer_table, test_kmer_table,  alpha, beta, matches_num):
     M_U_train = get_M_U_kmer_table(pattern, train_kmer_table, matches_num)
     M_U_test = get_M_U_kmer_table(pattern, test_kmer_table, matches_num)
-    return test_folds(M_U_train[0], M_U_train[1], M_U_test[0], M_U_test[1], alpha, beta)
-
-# def get_test_logLik_kmer_table(pattern, train_kmer_table, test_kmer_table,  alpha, beta, matches_num):
-#     M_U_train = get_M_U_kmer_table(pattern, train_kmer_table, matches_num)
-#     M_U_test = get_M_U_kmer_table(pattern, test_kmer_table, matches_num)
-#     return test_folds(M_U_train[0], M_U_train[1], M_U_test[0], M_U_test[1], alpha, beta)
+    return test_logLik(M_U_train[0], M_U_train[1], M_U_test[0], M_U_test[1], alpha, beta)
 
 
 @njit
 def greedy_res_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num):
     if generality(pattern) == 1:
-        return get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num), [pattern]
+        return get_loss_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num), [pattern]
     else:
-        best_score = get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num)
+        best_score = get_loss_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num)
         best_papa = [pattern]
         for i in range(len(pattern)):#[::-1]:
             pat_i_ord = ord(pattern[i])
@@ -165,8 +140,8 @@ def greedy_res_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num
                 pat1 = pattern[:i] + c1 + pattern[i+1:]
                 pat2 = pattern[:i] + c2 + pattern[i+1:]
 
-                score1 = get_score_kmer_table2(pat1, kmer_table, alpha, beta, penalty, matches_num)
-                score2 = get_score_kmer_table2(pat2, kmer_table, alpha, beta, penalty, matches_num)
+                score1 = get_loss_kmer_table2(pat1, kmer_table, alpha, beta, penalty, matches_num)
+                score2 = get_loss_kmer_table2(pat2, kmer_table, alpha, beta, penalty, matches_num)
 
                 s = score1 + score2
                 if s < best_score:
@@ -184,40 +159,42 @@ def greedy_res_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num
 @njit
 def greedy_res_kmer_table_ord(pattern, kmer_table, alpha, beta, penalty, matches_num):
     if generality_ord(pattern) == 1:
-        return get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num), [pattern]
+        return get_loss_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num), [pattern]
     else:
-        best_score = get_score_kmer_table2(pattern, kmer_table, alpha, beta, penalty, matches_num)
-        best_papa = [pattern]
+        best_loss = get_loss_kmer_table(pattern, kmer_table, alpha, beta, penalty, matches_num)
         pat1 = np.copy(pattern)
         pat2 = np.copy(pattern)
-        for i in range(len(pattern)):#[::-1]:
-            #if pattern[i] not in complements:
-            #    continue
+        best_i = -1
+        for i in range(len(pattern)):
             for j in range(n_complements[pattern[i]]):                
-            #for c1, c2 in complements[pattern[i]]:
                 c1 = complements_tab_1[pattern[i]][j]
                 c2 = complements_tab_2[pattern[i]][j]
 
                 pat1[i] = c1
                 pat2[i] = c2
 
-                score1 = get_score_kmer_table2(pat1, kmer_table, alpha, beta, penalty, matches_num)
-                score2 = get_score_kmer_table2(pat2, kmer_table, alpha, beta, penalty, matches_num)
+                loss1 = get_loss_kmer_table(pat1, kmer_table, alpha, beta, penalty, matches_num)
+                loss2 = get_loss_kmer_table(pat2, kmer_table, alpha, beta, penalty, matches_num)
 
-                s = score1 + score2
-                if s < best_score:
-                    best_score = s
-                    best_papa = [np.copy(pat1), np.copy(pat2)]
+                s = loss1 + loss2
+                if s < best_loss:
+                    best_i = i
+                    best_c1 = c1
+                    best_c2 = c2
+                    best_loss = s
+
             pat1[i] = pattern[i]
             pat2[i] = pattern[i]
 
-        if len(best_papa) > 1:
-            pat1, pat2 = best_papa
+        if best_i >= 0:
+            pat1[best_i] = best_c1
+            pat2[best_i] = best_c2
+            #pat1, pat2 = best_papa
             s1, papa1 = greedy_res_kmer_table_ord(pat1, kmer_table, alpha, beta, penalty, matches_num)
             s2, papa2 = greedy_res_kmer_table_ord(pat2, kmer_table, alpha, beta, penalty, matches_num)
             return s1+s2, papa1+papa2
         else:
-            return best_score, best_papa
+            return best_loss, [pattern]
 
 
 
@@ -226,10 +203,10 @@ def greedy_partition_CV(gen_pat, contextD, alphas, args, nmut, nunmut, penalties
     nf = args.nfolds
     nit = args.iterations
     npat = generality(gen_pat)
-    U_mem = numpy.zeros((npat,nf), dtype=numpy.uint64)
-    M_mem = numpy.zeros((npat,nf), dtype=numpy.uint64)
-    M_sum_test = numpy.zeros(nf)
-    U_sum_test = numpy.zeros(nf)
+    U_mem = np.zeros((npat,nf), dtype=np.uint64)
+    M_mem = np.zeros((npat,nf), dtype=np.uint64)
+    M_sum_test = np.zeros(nf)
+    U_sum_test = np.zeros(nf)
     test_loss = {(a_i, p_i):[] for a_i in range(len(alphas)) for p_i in range(len(penalties))}
     train_loss = {(a_i, p_i):[] for a_i in range(len(alphas)) for p_i in range(len(penalties))}
     #{(a_i, p_i):[] for a in alphas for p in penalties}
@@ -303,7 +280,7 @@ def greedy_partition_old(gen_pat, contextD, alpha, beta, penalty, args):
 def greedy_partition(genpat, contextD, alpha, beta, penalty, args):
     KE = KmerEnumeration(genpat)
     npat = generality(genpat)
-    kmer_table = numpy.zeros((npat,2), dtype=numpy.uint64)
+    kmer_table = np.zeros((npat,2), dtype=np.uint64)
     matches_num_ord = KE.get_matches_num_ord()
     for i, context in enumerate(matches(genpat)):
         n_mut, n_unmut = contextD[context]
@@ -325,7 +302,7 @@ class CrossValidation:
         self.genpat = genpat
         self.KE = KmerEnumeration(genpat)
         self.npat = generality(genpat)
-        self.kmer_table = numpy.zeros((self.npat,2), dtype=numpy.uint64)
+        self.kmer_table = np.zeros((self.npat,2), dtype=np.uint64)
         prng = np.random.RandomState(seed)
         self.matches_num = self.KE.get_matches_num()
         self.matches_num_ord = self.KE.get_matches_num_ord()
