@@ -1,4 +1,3 @@
-from functools import cache
 from kmerpapa.pattern_utils import *
 from kmerpapa.CV_tools import make_all_folds, make_all_folds_contextD_kmers
 from kmerpapa.score_utils import get_betas
