@@ -1,4 +1,64 @@
+import numpy as np
+from kmerpapa.pattern_utils import generality, KmerEnumeration
+
 nucleotides = ['A','C','G','T']
+
+def peek_first(f):
+    """
+    Return the first line and a generator that yields all lines including the first.
+    """
+    first_line = f.read_line()
+    def line_generator():
+        yield first_line
+        for line in f:
+            yield line
+    return first_line, line_generator
+
+
+def read_joint_kmer_counts_table(f, general_pattern, last_background = False,  n_scale=1):
+    """Read kmer counts from a file with kmer counts.
+    First columns is kmer as string. Next columns are counts.
+    Should be at least two columns with counts.
+
+    Args:
+        f (file object): input file
+        super_pattern (str): General Pattern
+        last_background: Is the last column backround counts (includes counts from other columns)?
+        n_scale (int, optional): Option to scale the background counts. Defaults to 1. Only works if last_background==True
+
+    Returns:
+        numpy.array with counts for each kmer and KmerEnumeration
+    """
+    line, line_generator = peek_first(f)
+    n_cols = len(line.split())-1
+    n_rows = generality(general_pattern)
+    kmer_table = np.zeros(n_rows, n_cols)
+    KE = KmerEnumeration(general_pattern)
+    kmer2num = KE.get_kmer2num()
+    for line in line_generator:
+        kmer, *counts = line.split()
+        kmer = kmer.upper()
+        if not all(n in nucleotides for n in kmer):
+            #Ignore kmers with unusual nucleotides
+            #TODO: should add warning
+            return
+        try:
+            counts = [int(x) for x in counts]
+        except:
+            #Floating points will be rounded to ints
+            counts = [int(float(x)) for x in counts]
+            assert len(counts) == n_cols, f'Too few counts in row with kmer:{kmer}'
+
+        if last_background:
+            counts[-1] = counts[-1]-sum(counts[:-1])
+            assert counts[-1] >= 0, '''
+                background counts should be larger than the positive counts
+                so that a negative set can be created by subtraction the positive count
+                from the background count. Problematic k-mer: {kmer}
+                '''
+            counts[-1] *= n_scale
+        kmer_table[kmer2num(kmer)] = counts
+    return kmer_table, KE
 
 def read_joint_kmer_counts(f, super_pattern, n_scale=1):
     """Read kmer counts from a file with three columns: kmer, count_mutated count_background

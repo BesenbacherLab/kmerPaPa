@@ -282,13 +282,13 @@ class KmerEnumeration():
         return s
 
     def get_kmer2num(self):
-        genpat = self.genpat
+        genpat = [ord(x) for x in self.genpat]
         cgppl = np.array(self.cgppl, dtype=np.uint32)
         @njit
         def f(kmer):
             s = 0
             for i in range(len(genpat)):
-                s += code_no_np[ord(genpat[i])][ord(kmer[i])] * cgppl[i]
+                s += code_no_np[genpat[i]][ord(kmer[i])] * cgppl[i]
             return s
         return f
 
