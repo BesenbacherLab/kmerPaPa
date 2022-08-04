@@ -51,7 +51,6 @@ done
 ```
 
 ## Creating input data
-
 Input files with k-mer counts can be created using [kmer_counter](https://github.com/BesenbacherLab/kmer_counter).
 Given a file of point mutations in a file that contain the CHROM, POS, REF and ALT columns from a vcf file:
 ```
@@ -67,7 +66,7 @@ kmer_counter snv --radius 2 {genome}.2bit {point_mutations_file} > mutated_5mers
 ```
 Given a bed file with regions that are sufficiently covered by sequencing we can count the background 5-mers using this command:
 ```
-kmer_counter background --bed {regions}.bed -radius 2 {genome}.2bit
+kmer_counter background --bed {regions}.bed -radius 2 {genome}.2bit > background_5mers.txt
 ```
 
 The file `{genome}.2bit` should be a 2bit file of the same reference genome that were used for calling the mutations. 2bit files can be downloaded from: `https://hgdownload.cse.ucsc.edu/goldenpath/{genome}/bigZips/{genome}.2bit` where `{genome}` is a valid UCSC genome assembly name (fx. "hg38").
