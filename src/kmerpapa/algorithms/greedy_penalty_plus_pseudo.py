@@ -294,7 +294,7 @@ def greedy_partition(genpat, contextD, alpha, beta, penalty, args):
 
 
 class CrossValidation:
-    def __init__(self, genpat, contextD, nfolds=2, nit=1, seed=None, verbosity=1):
+    def __init__(self, genpat, contextD, nfolds=2, nit=1, seed=None, verbosity=2):
         self.nfolds = nfolds
         self.nit = nit
         self.seed = seed
@@ -302,8 +302,9 @@ class CrossValidation:
         self.KE = KmerEnumeration(genpat)
         self.npat = generality(genpat)
         self.kmer_table = np.zeros((self.npat,2), dtype=np.uint64)
+        self.verbosity = verbosity
         prng = np.random.RandomState(seed)
-        self.matches_num = self.KE.get_matches_num()
+        #self.matches_num = self.KE.get_matches_num()
         self.matches_num_ord = self.KE.get_matches_num_ord()
         for i, context in enumerate(matches(self.genpat)):
             n_mut, n_unmut = contextD[context]
@@ -331,8 +332,9 @@ class CrossValidation:
                 for pattern in papa:
                     this_ll = get_test_logLik_kmer_table(pattern, train_kmer_table, self.fold_kmer_table[repeat][fold], alpha, beta, self.matches_num_ord)
                     test_ll +=  this_ll        
-            ll_list.append(test_ll)        
-        #print(penalty, alpha, sum(ll_list)/len(ll_list))
+            ll_list.append(test_ll)
+        if(self.verbosity>1):
+            print(penalty, alpha, sum(ll_list)/len(ll_list), file=sys.stderr)
         return sum(ll_list)/len(ll_list)
 
 class GridSearchCV(CrossValidation):

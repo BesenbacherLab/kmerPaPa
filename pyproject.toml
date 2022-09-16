@@ -16,9 +16,9 @@ packages = [ { include = "kmerpapa", from = "src" } ]
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
-numpy = ">=1.17,<1.21"
+numpy = ">=1.21,<1.23"
 scipy = "^1.7.1"
-numba = "^0.54.1"
+numba = ">=0.55.2"
 scikit-optimize = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
@@ -32,11 +32,12 @@ pytest-xdist = "^2.2.0"
 
 # tasks
 pip = "^21.3.1"
-duty = "^0.6.0"
-git-changelog = "^0.4.2"
+duty = ">=0.7.0"
+git-changelog = ">=0.5.0"
 httpx = "^0.16.1"
-jinja2-cli = "^0.7.0"
+jinja2-cli = "^0.8.2"
 toml = "^0.10.2"
+markupsafe = ">=2.1.1"
 
 # docs
 mkdocs = "^1.1.2"

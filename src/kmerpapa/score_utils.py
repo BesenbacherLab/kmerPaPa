@@ -34,6 +34,20 @@ def get_betas(alpha, M, U):
     betas = (alpha*(1.0-my))/my
     return betas
 
+def get_betas_kmer_table(alpha, kmer_table):
+    """get array with beta values for each fold
+
+    Args:
+        alpha (float): pseudo count
+        kmer_table
+
+    Returns:
+        float array: array with beta value for each fold
+    """
+    col_sums = kmer_table.sum(axis=0)
+    my=col_sums/col_sums.sum()
+    betas = (alpha*(1.0-my))/my
+    return betas
 
     
 

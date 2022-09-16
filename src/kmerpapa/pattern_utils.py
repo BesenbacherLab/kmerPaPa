@@ -282,7 +282,7 @@ class KmerEnumeration():
         return s
 
     def get_kmer2num(self):
-        genpat = [ord(x) for x in self.genpat]
+        genpat = np.array([ord(x) for x in self.genpat])
         cgppl = np.array(self.cgppl, dtype=np.uint32)
         @njit
         def f(kmer):
@@ -362,7 +362,6 @@ class KmerEnumeration():
         return f
 
 
-
     def num2kmer(self, num):
         num=int(num)
         pat = ''
@@ -380,17 +379,19 @@ def pattern2num_new_ord(cgppl, genpat, pat):
     return s
 
 def LCA_pattern_of_kmers(contexts):
-    '''Least common ancestor (LCA) pattern of a list of k-mers'''
+    '''Least common ancestor (LCA) pattern of a iterable container of k-mers'''
     pat_L = []
-    for i in range(len(contexts[0])):
+    first_context = next(iter(contexts))
+    for i in range(len(first_context)):
         s = frozenset(x[i] for x in contexts)
         pat_L.append(inv_code[s])
     return ''.join(pat_L)
 
 def LCA_pattern_of_patterns(patterns):
-    '''Least common ancestor (LCA) pattern of a list of patterns'''
+    '''Least common ancestor (LCA) pattern of a iterable container of patterns'''
     pat_L = []
-    for i in range(len(patterns[0])):
+    first_context = next(iter(contexts))
+    for i in range(len(first_context)):
         s = frozenset(list(chain(*[code[x[i]] for x in patterns])))
         pat_L.append(inv_code[s])
     return ''.join(pat_L)
