@@ -2,7 +2,7 @@
 Tool to calculate a "k-mer pattern partition" from position specific k-mer counts. This can for instance be used to train a mutation rate model.
 
 ## Requirements
-kmerPaPa requires Python 3.7 or above.
+kmerPaPa requires Python 3.8 or above.
 
 ## Installation
 kmerPaPa can be installed using pip:
