@@ -256,6 +256,18 @@ class PatternEnumeration():
             s += perm_code_no[self.genpat[i]][pattern[i]] * self.cgppl[i]
         return s
 
+    def get_pattern2num(self):
+        genpat = np.array([ord(x) for x in self.genpat])
+        cgppl = np.array(self.cgppl, dtype=np.uint32)
+        @njit
+        def f(pattern):
+            s = 0
+            for i in range(len(genpat)):
+                s += perm_code_no_np[genpat[i]][ord(pattern[i])] * cgppl[i]
+            return s
+        return f
+
+
     def num2pattern(self, num):
         num=int(num)
         pat = ''
@@ -264,6 +276,10 @@ class PatternEnumeration():
             num = num // self.gppl[i]
             pat = pat + perm_code[self.genpat[i]][k]
         return pat
+
+
+
+
 
 class KmerEnumeration():
     def __init__(self, general_pattern):

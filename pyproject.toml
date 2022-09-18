@@ -15,11 +15,11 @@ keywords = []
 packages = [ { include = "kmerpapa", from = "src" } ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.10"
-numpy = ">=1.21,<1.23"
-scipy = "^1.7.1"
-numba = ">=0.55.2"
+python = ">=3.8,<3.11"
 scikit-optimize = "^0.9.0"
+numba = "^0.56.2"
+numpy = "^1.23.3"
+scipy = "^1.9.1"
 
 [tool.poetry.dev-dependencies]
 # formatting, quality, tests

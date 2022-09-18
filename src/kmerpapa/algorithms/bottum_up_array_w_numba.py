@@ -14,14 +14,14 @@ def get_right(super_pat, left):
             right += minus_set[super_pat[i]][left[i]]
     return right
 
-def backtrack(pattern, backtrack_mem, PE):
-    pat_num = PE.pattern2num(pattern)
+def backtrack(pattern, backtrack_mem, pattern2num, PE):
+    pat_num = pattern2num(pattern)
     left_num = backtrack_mem[pat_num]
     if left_num == pat_num:
         return [pattern]
     left_pat = PE.num2pattern(left_num)
     right_pat = get_right(pattern, left_pat)
-    return backtrack(left_pat, backtrack_mem, PE) + backtrack(right_pat, backtrack_mem, PE)
+    return backtrack(left_pat, backtrack_mem, pattern2num, PE) + backtrack(right_pat, backtrack_mem, pattern2num, PE)
 
 def score(M, U):
     p = (M + alpha)/(M + U + alpha + beta)
@@ -145,7 +145,7 @@ def handle_pattern_multi(pattern, score_mem, backtrack_mem, pattern_table):
                 c2 = complements_tab_2[pattern[i]][j]
                 pat1_num = pat_num_diff + pcn_row[c1] * cgppl[i]
                 pat2_num = pat_num_diff + pcn_row[c2] * cgppl[i]
-                new_score = score_mem[pat1_num]+score_mem[pat2_num] 
+                new_score = score_mem[pat1_num] + score_mem[pat2_num] 
                 if new_score < score_mem[pat_num]:
                     score_mem[pat_num] = new_score
                     backtrack_mem[pat_num] = pat1_num
@@ -156,11 +156,11 @@ def handle_pattern_multi(pattern, score_mem, backtrack_mem, pattern_table):
     p = (T + alpha)/(T.sum() + alpha + beta)
     p = p/p.sum()
     #s = penalty -2.0 * xlogy(T, p).sum()
-    #s = score_array(T)
     s = penalty
+    #s += np.sum(-2.0*T*np.log(p))
     for i in range(len(p)):
         if T[i] > 0:
-            s += -2.0 * T[i]*math.log(p[i])
+            s += -2.0 * T[i]*np.log(p[i])
     
     if s < score_mem[pat_num]:
         score_mem[pat_num] = s
@@ -185,9 +185,9 @@ def pattern_partition_bottom_up_kmer_table(KE, kmer_table, alpha_, beta_, penalt
     score_mem = np.full(npat, 1e100, dtype=ftype)
 
     if kmer_table.sum() > np.iinfo(np.uint32).max:
-        itype = np.uint64
+       itype = np.uint64
     else:
-        itype = np.uint32
+       itype = np.uint32
 
     n_kmers, n_types = kmer_table.shape    
     pattern_table = np.empty((npat, n_types), dtype=itype)
@@ -210,8 +210,10 @@ def pattern_partition_bottom_up_kmer_table(KE, kmer_table, alpha_, beta_, penalt
     has_complement[ord('T')] = False
 
     kmer2num  = KE.get_kmer2num()
+    pattern2num = PE.get_pattern2num()
     for pattern in subpatterns_level(gen_pat, 0):
-        pe_pat_num = PE.pattern2num(pattern)
+        #pe_pat_num = PE.pattern2num(pattern)
+        pe_pat_num = pattern2num(pattern)
         ke_pat_num = kmer2num(pattern)
         pattern_table[pe_pat_num] = kmer_table[ke_pat_num]
         score_mem[pe_pat_num] = score_array(pattern_table[pe_pat_num])
@@ -223,12 +225,12 @@ def pattern_partition_bottom_up_kmer_table(KE, kmer_table, alpha_, beta_, penalt
         for pattern in subpatterns_level_ord_np(gpot, gen_pat_level, level):
             handle_pattern_multi(pattern, score_mem, backtrack_mem, pattern_table)
     
-    pat_num = PE.pattern2num(gen_pat)
-    names = backtrack(gen_pat, backtrack_mem, PE)
+    pat_num = pattern2num(gen_pat)
+    names = backtrack(gen_pat, backtrack_mem, pattern2num, PE)
     assert(all(pattern_table[pat_num] == kmer_table.sum(axis=0)))
     counts = np.empty((len(names), n_types), itype)
     for i in range(len(names)):
-        counts[i] = pattern_table[PE.pattern2num(names[i])]
+        counts[i] = pattern_table[pattern2num(names[i])]
     return score_mem[pat_num], names, counts
 
 

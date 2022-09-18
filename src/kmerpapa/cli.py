@@ -136,12 +136,9 @@ def main(args = None):
         print()
         return 0
 
-
-
     try:
         kmer_table, KE = read_input(args)
         gen_pat = KE.genpat
-        #contextD, n_unmut, n_mut = read_input(args, super_pattern)
     except Exception as e:
         parser.print_help()
         print('='*80, file=sys.stderr)
@@ -155,22 +152,24 @@ def main(args = None):
         print(f'Input data read. {col_sums}', file=sys.stderr)
         #print(f'Input data read. {n_mut} positive k-mers and {n_unmut} negative k-mers', file=sys.stderr)
 
+    n_kmers, n_muttype = kmer_table.shape
+
     if not args.penalty_values is None:
         assert args.score == 'penalty_and_pseudo', f'you cannot specify penalty values when using the {args.score} score function'
     else:
         if args.score == "BIC":
-            args.penalty_values = [log(n_mut)]
+            args.penalty_values = [log(col_sums.sum())]
         elif args.score == "AIC":
             args.penalty_values = [2.0]
         elif args.score == "HQ":
-            args.penalty_values = [log(log(n_mut))]
+            args.penalty_values = [log(log(col_sums.sum()))]
         elif args.score == "LL":
             args.penalty_values = [0.0]
         elif args.score == 'all_kmers':
             pass
         elif args.score == 'penalty_and_pseudo':
             if not args.BayesOpt:
-                args.penalty_values = [log(len(contextD))]
+                args.penalty_values = [log(n_kmers)]
                 if args.verbosity > 0:
                     print(f'penalty values not set. Using {args.penalty_values[0]}', file=sys.stderr)
         else:
