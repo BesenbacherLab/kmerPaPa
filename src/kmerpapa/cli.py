@@ -76,6 +76,9 @@ def get_parser():
         '-l', '--long_output', action='store_true',
         help="Print all k-mers in output format.")
     parser.add_argument(
+        '--pairwise', action='store_true',
+        help="Multi-class counts are pairwise counts.")
+    parser.add_argument(
         '-s', '--super_pattern', type=str,
         help='If a super-pattern is provided the program will only consider k-mers that match that pattern. '
              'If for instance the "--positive" file contain all 5-mers at A->T mutated sites but the "--background" '
@@ -152,7 +155,13 @@ def main(args = None):
         print(f'Input data read. {col_sums}', file=sys.stderr)
         #print(f'Input data read. {n_mut} positive k-mers and {n_unmut} negative k-mers', file=sys.stderr)
 
-    n_kmers, n_muttype = kmer_table.shape
+    print("test")
+    if args.pairwise:
+        n_kmers, _two, n_muttype = kmer_table.shape
+        assert _two == 2
+    else:
+        n_kmers, n_muttype = kmer_table.shape        
+    
 
     if not args.penalty_values is None:
         assert args.score == 'penalty_and_pseudo', f'you cannot specify penalty values when using the {args.score} score function'
@@ -261,8 +270,13 @@ def main(args = None):
         assert(False)
         #contextD, gen_pat = downsize_contextD(contextD, gen_pat, best_k)
 
-    n_kmers, n_muttype = kmer_table.shape
-    
+
+    if args.pairwise:
+        n_kmers, _two, n_muttype = kmer_table.shape
+        assert _two == 2
+    else:
+        n_kmers, n_muttype = kmer_table.shape        
+        
 
     #my=n_mut/(n_mut+n_unmut)
     best_betas = get_betas_kmer_table(best_alpha, kmer_table)
@@ -281,8 +295,12 @@ def main(args = None):
     #         greedy_penalty_plus_pseudo.greedy_partition(gen_pat, contextD, best_alpha, best_beta, best_penalty, args)
 
     #else:
-    best_score, names, counts = \
-        bottum_up_array_w_numba.pattern_partition_bottom_up_kmer_table(KE, kmer_table, best_alpha, best_betas, best_penalty, args.verbosity)
+    if args.pairwise:
+        best_score, names, counts = \
+            bottum_up_array_w_numba.pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, best_alpha, best_penalty, args.verbosity)
+    else:
+        best_score, names, counts = \
+            bottum_up_array_w_numba.pattern_partition_bottom_up_kmer_table(KE, kmer_table, best_alpha, best_betas, best_penalty, args.verbosity)
         
         #(gen_pat, contextD, best_alpha, best_beta, best_penalty, args, n_mut, n_unmut)
         
