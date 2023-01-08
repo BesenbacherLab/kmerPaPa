@@ -143,12 +143,11 @@ def read_joint_kmer_counts_table_pair(f, general_pattern, last_background = Fals
     """
     line, line_generator = peek_first(f)
     n_cols = len(line.split())-1
-    assert n_cols %2 ==0, "ERROR: should be equalt number of columns in pairwise mode"
+    assert n_cols %2 ==0, "ERROR: should be equal number of columns in pairwise mode"
     n_cols = n_cols // 2
     max_val = np.iinfo(dtype).max
     n_rows = generality(general_pattern)
     kmer_table = np.zeros((n_rows, 2, n_cols), dtype)
-    print(kmer_table.shape)
     KE = KmerEnumeration(general_pattern)
     kmer2num = KE.get_kmer2num()
     for line in line_generator():
@@ -482,6 +481,9 @@ def read_input(args):
         assert (all((n_mut, n_unmut)==kmer_table.sum(axis=0)))
     else:
         if args.pairwise:
+            if args.super_pattern is None:
+                if args.verbosity > 0:
+                    assert False, "Super Pattern must be provided with pairwise for now"
             kmer_table, KE = read_joint_kmer_counts_table_pair(args.joint_context_counts, args.super_pattern)
         else:
             if args.super_pattern is None:

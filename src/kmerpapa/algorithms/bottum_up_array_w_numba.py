@@ -35,7 +35,7 @@ def score_array(A):
     return res
 
 @njit
-def score_array_pair(A):
+def score_array_pair(A, alpha, my):
     _two, n_types  = A.shape
     s = 0.0
     for i in range(n_types):
@@ -43,11 +43,22 @@ def score_array_pair(A):
         U = A[1][i]
         p = (M + alpha)/(M + U + (alpha/my[i]))
         if M > 0:
-            s += M*math.log(p)
+            s += M*np.log(p)
         if U > 0:
-            s += U*math.log(1.0-p)
+            s += U*np.log(1.0-p)
     s = penalty -2.0 *s
     return s
+
+@njit
+def rate_array_pair(A, alpha, my):
+    _two, n_types  = A.shape
+    s = 0.0
+    r = np.empty(n_types, np.float32)
+    for i in range(n_types):
+        M = A[0][i]
+        U = A[1][i]
+        r[i] = (M + alpha)/(M + U + (alpha/my[i]))
+    return r
 
 
 @njit
@@ -281,9 +292,9 @@ def handle_pattern_multi_pair(pattern, score_mem, backtrack_mem, pattern_table):
         U = T[1][i]
         p = (M + alpha)/(M + U + (alpha/my[i]))
         if M > 0:
-            s += M*math.log(p)
+            s += M*np.log(p)
         if U > 0:
-            s += U*math.log(1.0-p)
+            s += U*np.log(1.0-p)
     s = penalty -2.0 *s
     if s < score_mem[pat_num]:
         score_mem[pat_num] = s
@@ -301,8 +312,6 @@ def pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, alpha_, penalty_
     global penalty
     alpha = alpha_
     #beta = beta_.sum(axis=0)
-    print(alpha)
-    
     penalty = penalty_
     ftype = np.float32
     gen_pat = KE.genpat
@@ -321,7 +330,7 @@ def pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, alpha_, penalty_
 
     sums = kmer_table.sum(axis=0)
     my = sums[0]/(sums[0]+sums[1])
-    print(my)
+
     PE = PatternEnumeration(gen_pat)
 
     cgppl = np.array(get_cum_genpat_pos_level(gen_pat), dtype=np.uint32)
@@ -345,7 +354,7 @@ def pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, alpha_, penalty_
         pe_pat_num = pattern2num(pattern)
         ke_pat_num = kmer2num(pattern)
         pattern_table[pe_pat_num] = kmer_table[ke_pat_num]
-        score_mem[pe_pat_num] = score_array_pair(pattern_table[pe_pat_num])
+        score_mem[pe_pat_num] = score_array_pair(pattern_table[pe_pat_num], alpha, my)
         backtrack_mem[pe_pat_num] = pe_pat_num
 
     for level in range(1, gen_pat_level+1):
@@ -356,11 +365,13 @@ def pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, alpha_, penalty_
     
     pat_num = pattern2num(gen_pat)
     names = backtrack(gen_pat, backtrack_mem, pattern2num, PE)
-    assert(all(pattern_table[pat_num] == kmer_table.sum(axis=0)))
+    assert(all(pattern_table[pat_num][0] == kmer_table.sum(axis=0)[0]))
+    assert(all(pattern_table[pat_num][1] == kmer_table.sum(axis=0)[1]))
     counts = np.empty((len(names), 2, n_types), itype)
+    rates = np.empty((len(names), n_types), np.float32)
     for i in range(len(names)):
         counts[i] = pattern_table[pattern2num(names[i])]
-    return score_mem[pat_num], names, counts
-
+        rates[i] = rate_array_pair(counts[i], alpha, my)
+    return score_mem[pat_num], names, counts, rates
 
 

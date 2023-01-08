@@ -155,7 +155,6 @@ def main(args = None):
         print(f'Input data read. {col_sums}', file=sys.stderr)
         #print(f'Input data read. {n_mut} positive k-mers and {n_unmut} negative k-mers', file=sys.stderr)
 
-    print("test")
     if args.pairwise:
         n_kmers, _two, n_muttype = kmer_table.shape
         assert _two == 2
@@ -178,7 +177,7 @@ def main(args = None):
             pass
         elif args.score == 'penalty_and_pseudo':
             if not args.BayesOpt:
-                args.penalty_values = [log(n_kmers)]
+                args.penalty_values = [log(n_kmers*n_muttype)]
                 if args.verbosity > 0:
                     print(f'penalty values not set. Using {args.penalty_values[0]}', file=sys.stderr)
         else:
@@ -296,7 +295,7 @@ def main(args = None):
 
     #else:
     if args.pairwise:
-        best_score, names, counts = \
+        best_score, names, counts, rates = \
             bottum_up_array_w_numba.pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, best_alpha, best_penalty, args.verbosity)
     else:
         best_score, names, counts = \
@@ -317,11 +316,16 @@ def main(args = None):
     if args.verbosity>0:
         print(f'Optimal k-mer pattern partition contains {len(names)} patterns.', file=sys.stderr)
         print(f'loss={best_score}', file=sys.stderr)
-        print(f'LL={get_loss(counts, best_alpha, best_betas)}', file=sys.stderr)
+        #print(f'LL={get_loss(counts, best_alpha, best_betas)}', file=sys.stderr)
 
     if args.long_output:
         print('context', 'c_neg', 'c_pos', 'c_rate',
                 'pattern', 'p_neg', 'p_pos', 'p_rate', file=args.output)
+    elif args.pairwise:
+        count1_head = ' '.join(f'positive{i+1}_count' for i in range(n_muttype)) 
+        count2_head = ' '.join(f'negative{i+1}_count' for i in range(n_muttype)) 
+        rate_head = ' '.join(f'type{i+1}_rate' for i in range(n_muttype))
+        print('pattern', count1_head, count2_head, rate_head, file=args.output) 
     else:
         count_head = ' '.join(f'type{i+1}_count' for i in range(n_muttype)) 
         rate_head = ' '.join(f'type{i+1}_rate' for i in range(n_muttype)) 
@@ -331,15 +335,21 @@ def main(args = None):
 
     for i in range(len(names)):
         pat = names[i]
-        count_list = [str(x) for x in list(counts[i])]
-        p = (counts[i] + best_alpha)/(counts[i].sum() + best_alpha + best_betas)
-        p = p/p.sum()
-        p_list = [str(x) for x in list(p)]
         #if args.long_output:
         #    for context in matches(pat):
         #        nm, ns = contextD[context]
         #        print(context, ns, nm, float(nm)/(nm+ns), pat, U, M, p, file=args.output)
         #else:
-        print(pat, " ".join(count_list), " ".join(p_list), file=args.output)
+
+        if args.pairwise:
+            count_list = [str(x) for x in counts[i].flatten()]
+            rate_list = [str(x) for x in rates[i]]
+            print(pat, " ".join(count_list), " ".join(rate_list),file=args.output)
+        else:
+            count_list = [str(x) for x in list(counts[i])]
+            p = (counts[i] + best_alpha)/(counts[i].sum() + best_alpha + best_betas)
+            p = p/p.sum()
+            p_list = [str(x) for x in list(p)]
+            print(pat, " ".join(count_list), " ".join(p_list), file=args.output)
 
     return 0
