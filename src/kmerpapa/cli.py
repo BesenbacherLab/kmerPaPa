@@ -322,17 +322,18 @@ def main(args = None):
         print('context', 'c_neg', 'c_pos', 'c_rate',
                 'pattern', 'p_neg', 'p_pos', 'p_rate', file=args.output)
     elif args.pairwise:
-        count1_head = ' '.join(f'positive{i+1}_count' for i in range(n_muttype)) 
-        count2_head = ' '.join(f'negative{i+1}_count' for i in range(n_muttype)) 
+        count_head = ' '.join(f'positive{i+1}_count negative{i+1}_count' for i in range(n_muttype)) 
+        #count1_head = ' '.join(f'positive{i+1}_count' for i in range(n_muttype)) 
+        #count2_head = ' '.join(f'negative{i+1}_count' for i in range(n_muttype)) 
         rate_head = ' '.join(f'type{i+1}_rate' for i in range(n_muttype))
-        print('pattern', count1_head, count2_head, rate_head, file=args.output) 
+        print('pattern', count_head, rate_head, file=args.output) 
     else:
         count_head = ' '.join(f'type{i+1}_count' for i in range(n_muttype)) 
         rate_head = ' '.join(f'type{i+1}_rate' for i in range(n_muttype)) 
 
         print('pattern', count_head, rate_head, file=args.output)
 
-
+    print(counts[0])
     for i in range(len(names)):
         pat = names[i]
         #if args.long_output:
@@ -342,7 +343,8 @@ def main(args = None):
         #else:
 
         if args.pairwise:
-            count_list = [str(x) for x in counts[i].flatten()]
+            #count_list = [str(x) for x in counts[i].flatten()]
+            count_list = [f'{counts[i][0][j]} {counts[i][1][j]}' for j in range(n_muttype)]
             rate_list = [str(x) for x in rates[i]]
             print(pat, " ".join(count_list), " ".join(rate_list),file=args.output)
         else:
