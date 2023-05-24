@@ -79,6 +79,9 @@ def get_parser():
         '--pairwise', action='store_true',
         help="Multi-class counts are pairwise counts.")
     parser.add_argument(
+        '--last_background', action='store_true',
+        help="Set if the last mutation type is the background count that includes the counts for the other types.")
+    parser.add_argument(
         '-s', '--super_pattern', type=str,
         help='If a super-pattern is provided the program will only consider k-mers that match that pattern. '
              'If for instance the "--positive" file contain all 5-mers at A->T mutated sites but the "--background" '
@@ -94,8 +97,11 @@ def get_parser():
              'If more than one value of pseudo_count and penalty is given then default is 2. '
              'Otherwise default is not to run cross validation if --nfolds option is not set.')
     parser.add_argument(
+        '-t', '--ntypes', type=int, metavar='t', default = 1,
+        help='Multi-class counts have t different types.')
+    parser.add_argument(
         '-i', '--iterations', type=int, default=1, metavar='i',
-        help='Repeat cross validation i times')
+        help='Repeat cross validation i times') 
     parser.add_argument(
         '-a', '--pseudo_counts', type=float, metavar='a', nargs='+', default = [0.8],
         help='Different pseudo count (alpha) values to test using cross validation')
@@ -156,12 +162,15 @@ def main(args = None):
         #print(f'Input data read. {n_mut} positive k-mers and {n_unmut} negative k-mers', file=sys.stderr)
 
     if args.pairwise:
-        n_kmers, _two, n_muttype = kmer_table.shape
-        assert _two == 2
+        n_kmers, n_muttype, n_bins = kmer_table.shape
+        assert n_muttype == 2
+    elif args.ntypes != 1:
+        n_kmers, n_bins, n_muttype = kmer_table.shape
+        assert n_muttype == args.ntypes
     else:
-        n_kmers, n_muttype = kmer_table.shape        
+        n_kmers, n_muttype = kmer_table.shape
+        n_bins = 1        
     
-
     if not args.penalty_values is None:
         assert args.score == 'penalty_and_pseudo', f'you cannot specify penalty values when using the {args.score} score function'
     else:
@@ -177,7 +186,7 @@ def main(args = None):
             pass
         elif args.score == 'penalty_and_pseudo':
             if not args.BayesOpt:
-                args.penalty_values = [log(n_kmers*n_muttype)]
+                args.penalty_values = [log(n_kmers*n_bins*(n_muttype-1))]
                 if args.verbosity > 0:
                     print(f'penalty values not set. Using {args.penalty_values[0]}', file=sys.stderr)
         else:
@@ -270,13 +279,16 @@ def main(args = None):
         #contextD, gen_pat = downsize_contextD(contextD, gen_pat, best_k)
 
 
-    if args.pairwise:
-        n_kmers, _two, n_muttype = kmer_table.shape
-        assert _two == 2
-    else:
-        n_kmers, n_muttype = kmer_table.shape        
+    # if args.pairwise:
+    #     n_kmers, _two, n_muttype = kmer_table.shape
+    #     assert _two == 2
+    # elif args.ntypes != 1:
+    #     n_kmers, n_bins, n_types = kmer_table.shape
+    #     assert n_types == args.ntypes
+    # else:
+    #     n_kmers, n_muttype = kmer_table.shape        
         
-
+    
     #my=n_mut/(n_mut+n_unmut)
     best_betas = get_betas_kmer_table(best_alpha, kmer_table)
 
@@ -297,6 +309,9 @@ def main(args = None):
     if args.pairwise:
         best_score, names, counts, rates = \
             bottum_up_array_w_numba.pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, best_alpha, best_penalty, args.verbosity)
+    elif args.ntypes != 1:
+        best_score, names, counts, rates = \
+            bottum_up_array_w_numba.pattern_partition_bottom_up_kmer_table_multi(KE, kmer_table, best_alpha, best_penalty, args.verbosity) 
     else:
         best_score, names, counts = \
             bottum_up_array_w_numba.pattern_partition_bottom_up_kmer_table(KE, kmer_table, best_alpha, best_betas, best_penalty, args.verbosity)
@@ -322,18 +337,21 @@ def main(args = None):
         print('context', 'c_neg', 'c_pos', 'c_rate',
                 'pattern', 'p_neg', 'p_pos', 'p_rate', file=args.output)
     elif args.pairwise:
-        count_head = ' '.join(f'positive{i+1}_count negative{i+1}_count' for i in range(n_muttype)) 
+        count_head = ' '.join(f'bin{i+1}_pos_count bin{i+1}_neg_count' for i in range(n_bins)) 
         #count1_head = ' '.join(f'positive{i+1}_count' for i in range(n_muttype)) 
         #count2_head = ' '.join(f'negative{i+1}_count' for i in range(n_muttype)) 
-        rate_head = ' '.join(f'type{i+1}_rate' for i in range(n_muttype))
-        print('pattern', count_head, rate_head, file=args.output) 
+        rate_head = ' '.join(f'bin{i+1}_pos_rate' for i in range(n_bins))
+        print('pattern', count_head, rate_head, file=args.output)
+    elif args.ntypes != 1:
+        count_head = ' '.join(f'bin{i+1}_type{j+1}_count' for i in range(n_bins) for j in range(n_muttype))
+        rate_head = ' '.join(f'bin{i+1}_type{j+1}_rate' for i in range(n_bins) for j in range(n_muttype))
+        print('pattern', count_head, rate_head, file=args.output)
     else:
         count_head = ' '.join(f'type{i+1}_count' for i in range(n_muttype)) 
         rate_head = ' '.join(f'type{i+1}_rate' for i in range(n_muttype)) 
-
         print('pattern', count_head, rate_head, file=args.output)
 
-    print(counts[0])
+    #print(counts[0])
     for i in range(len(names)):
         pat = names[i]
         #if args.long_output:
@@ -344,9 +362,13 @@ def main(args = None):
 
         if args.pairwise:
             #count_list = [str(x) for x in counts[i].flatten()]
-            count_list = [f'{counts[i][0][j]} {counts[i][1][j]}' for j in range(n_muttype)]
+            count_list = [f'{counts[i][0][j]} {counts[i][1][j]}' for j in range(n_bins)]
             rate_list = [str(x) for x in rates[i]]
             print(pat, " ".join(count_list), " ".join(rate_list),file=args.output)
+        elif args.ntypes != 1:
+            count_list = ' '.join(str(counts[i][j][k]) for j in range(n_bins) for k in range(n_muttype))
+            rate_list = ' '.join(str(rates[i][j][k]) for j in range(n_bins) for k in range(n_muttype))
+            print(f'{pat} {count_list} {rate_list}', file = args.output)
         else:
             count_list = [str(x) for x in list(counts[i])]
             p = (counts[i] + best_alpha)/(counts[i].sum() + best_alpha + best_betas)

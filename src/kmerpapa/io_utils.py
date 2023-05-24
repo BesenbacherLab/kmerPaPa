@@ -186,6 +186,65 @@ def read_joint_kmer_counts_table_pair(f, general_pattern, last_background = Fals
     return kmer_table, KE
 
 
+def read_joint_kmer_counts_table_multi(f, general_pattern, n_types, last_background = False,  dtype=np.uint32, n_scale=1):
+    """Read pairwise kmer counts from a file with kmer counts.
+    First columns is kmer as string. Next columns are counts.
+    The columns are paired with equal col numbers corresponding to mutated counts and
+    unequal numbers ot unmutated counts.
+    If col i is mutated of type x then col i+1 is unmutated of type x.
+    Should be at least two columns with counts. And an equal number of count columns.
+
+    Args:
+        f (file object): input file
+        general_pattern (str): General Pattern
+        last_background: Is the last column backround counts (includes counts from other columns)?
+        n_scale (int, optional): Option to scale the background counts. Defaults to 1. Only works if last_background==True
+
+    Returns:
+        numpy.array with counts for each kmer and KmerEnumeration
+    """
+    line, line_generator = peek_first(f)
+    n_cols = len(line.split())-1
+    assert n_cols % n_types ==0, "ERROR: should be equal number of columns in pairwise mode"
+    n_cols = n_cols // n_types
+    max_val = np.iinfo(dtype).max
+    n_rows = generality(general_pattern)
+    kmer_table = np.zeros((n_rows, n_types, n_cols), dtype)
+    KE = KmerEnumeration(general_pattern)
+    kmer2num = KE.get_kmer2num()
+    for line in line_generator():
+        kmer, *counts = line.split()
+        kmer = kmer.upper()
+        assert all(n in nucleotides for n in kmer)
+        #if not all(n in nucleotides for n in kmer):
+        #    #Ignore kmers with unusual nucleotides
+        #    #TODO: should add warning
+        #    continue
+        kmernum = kmer2num(kmer)
+        for i in range(n_types):
+            try:
+                counts_i = [int(x) for x in counts[i::n_types]]
+            except:
+                #Floating points will be rounded to ints
+                counts_i = [int(float(x)) for x in counts[i::n_types]]
+            assert len(counts_i) == n_cols, f'Too few counts in row with kmer:{kmer}'
+            assert(all(c <= max_val for c in counts_i))
+            kmer_table[kmernum][i] = counts_i
+            
+
+        if last_background:
+            for i in range(n_types - 1):
+                kmer_table[kmernum][n_types-1] -= kmer_table[kmernum][i]
+                assert all(kmer_table[kmernum][n_types-1] >= 0), '''
+                    background counts should be larger than the positive counts
+                    so that a negative set can be created by subtraction the positive count
+                    from the background count. Problematic k-mer: {kmer}
+                    '''
+            #counts[-1] *= n_scale
+    kmer_table = np.swapaxes(kmer_table,1,2)
+    return kmer_table, KE
+
+
 
 def contextD2kmer_table(contextD, general_pattern, dtype=np.uint32):
     if general_pattern is None:
@@ -484,7 +543,12 @@ def read_input(args):
             if args.super_pattern is None:
                 if args.verbosity > 0:
                     assert False, "Super Pattern must be provided with pairwise for now"
-            kmer_table, KE = read_joint_kmer_counts_table_pair(args.joint_context_counts, args.super_pattern)
+            kmer_table, KE = read_joint_kmer_counts_table_pair(args.joint_context_counts, args.super_pattern, args.last_background)
+        elif args.ntypes != 1:
+            if args.super_pattern is None:
+                if args.verbosity > 0:
+                    assert False, "Super Pattern must be provided with pairwise for now"
+            kmer_table, KE = read_joint_kmer_counts_table_multi(args.joint_context_counts, args.super_pattern, args.ntypes, args.last_background)
         else:
             if args.super_pattern is None:
                 if args.verbosity > 0:

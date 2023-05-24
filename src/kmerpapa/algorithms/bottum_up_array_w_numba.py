@@ -50,6 +50,21 @@ def score_array_pair(A, alpha, my):
     return s
 
 @njit
+def score_array_3D(A, alpha, my):
+    n_bintypes, n_muttypes  = A.shape
+    s = penalty
+
+    for i in range(n_bintypes):
+        p = (A[i] + alpha)/(A[i].sum() + alpha/my[i])
+        p = p/p.sum()
+        assert len(p) == n_muttypes
+        for j in range(len(p)):
+            if A[i][j] > 0:
+                s += -2.0 * A[i][j]*np.log(p[j])
+    return s
+
+
+@njit
 def rate_array_pair(A, alpha, my):
     _two, n_types  = A.shape
     s = 0.0
@@ -58,6 +73,16 @@ def rate_array_pair(A, alpha, my):
         M = A[0][i]
         U = A[1][i]
         r[i] = (M + alpha)/(M + U + (alpha/my[i]))
+    return r
+
+@njit
+def rate_array_3D(A, alpha, my):
+    n_bintypes, n_muttypes  = A.shape
+    s = penalty
+    r = np.empty((n_bintypes, n_muttypes), np.float32)
+    for i in range(n_bintypes):
+        r[i] = (A[i] + alpha)/(A[i].sum() + alpha/my[i])
+        r[i] = r[i]/r[i].sum()
     return r
 
 
@@ -374,4 +399,131 @@ def pattern_partition_bottom_up_kmer_table_pair(KE, kmer_table, alpha_, penalty_
         rates[i] = rate_array_pair(counts[i], alpha, my)
     return score_mem[pat_num], names, counts, rates
 
+
+
+
+@njit
+def handle_pattern_multi_multi(pattern, score_mem, backtrack_mem, pattern_table):
+    pat_num = 0
+    for i in range(gen_pat_len):
+        pat_num += perm_code_no_np[gpo[i]][pattern[i]] * cgppl[i]
+    first = True
+    for i in range(gen_pat_len):
+        if has_complement[pattern[i]]:
+            pcn_row = perm_code_no_np[gpo[i]]
+            pat_num_diff  = pat_num - pcn_row[pattern[i]] * cgppl[i]
+            for j in range(n_complements[pattern[i]]):
+                c1 = complements_tab_1[pattern[i]][j]
+                c2 = complements_tab_2[pattern[i]][j]
+                pat1_num = pat_num_diff + pcn_row[c1] * cgppl[i]
+                pat2_num = pat_num_diff + pcn_row[c2] * cgppl[i]
+                new_score = score_mem[pat1_num] + score_mem[pat2_num] 
+                if new_score < score_mem[pat_num]:
+                    score_mem[pat_num] = new_score
+                    backtrack_mem[pat_num] = pat1_num
+                if first:
+                    pattern_table[pat_num] = pattern_table[pat1_num] + pattern_table[pat2_num]
+                    first = False
+    
+    #print(pattern_table.shape)
+    #T = pattern_table[pat_num]
+    #print(T.shape)
+    #print([0][0])
+    n_pat, n_bintypes, n_muttypes = pattern_table.shape
+    #n_muttypes, n_bintypes  = T.shape
+    s = penalty
+
+    for i in range(n_bintypes):
+        T = pattern_table[pat_num][i]
+        p = (T + alpha)/(T.sum() + alpha/my[i])
+        p = p/p.sum()
+        assert(len(p)==n_muttypes)
+        #s += np.sum(-2.0*T[i]*np.log(p))
+        for j in range(n_muttypes):
+            if T[j] > 0:
+                s += -2.0 * T[j]*np.log(p[j])
+
+    if s < score_mem[pat_num]:
+        score_mem[pat_num] = s
+        backtrack_mem[pat_num] = pat_num
+
+
+def pattern_partition_bottom_up_kmer_table_multi(KE, kmer_table, alpha_, penalty_, verbosity):
+    global cgppl
+    global gppl
+    global gpo
+    global gen_pat_len
+    global has_complement
+    global alpha
+    global my
+    global penalty
+    alpha = alpha_
+    #beta = beta_.sum(axis=0)
+    penalty = penalty_
+    ftype = np.float32
+    gen_pat = KE.genpat
+    npat = pattern_max(gen_pat)
+    score_mem = np.full(npat, 1e100, dtype=ftype)
+
+    if kmer_table.sum() > np.iinfo(np.uint32).max:
+       itype = np.uint64
+    else:
+       itype = np.uint32
+
+    # TODO input reader skal skrives om saa rækkefølgen her passer!!
+    n_kmers, n_bins, n_types = kmer_table.shape    
+    
+    pattern_table = np.empty((npat, n_bins, n_types), dtype=itype)
+    backtrack_mem = np.empty(npat, dtype=itype)
+
+    #sums = kmer_table.sum(axis=0)
+    #my = sums[0]/(sums[0]+sums[1])
+    ## Antager at jeg skal have my for hver bin?
+    my = (kmer_table.sum(axis=(0)).T/kmer_table.sum(axis=(0,2))).T
+    # hvis fælles my for alle bins:
+    #my = kmer_table.sum(axis=(0,1))/kmer_table.sum(axis=(0,1,2))
+
+    PE = PatternEnumeration(gen_pat)
+
+    cgppl = np.array(get_cum_genpat_pos_level(gen_pat), dtype=np.uint32)
+    gppl = np.array(get_genpat_pos_level(gen_pat), dtype=np.uint32)
+    gpo = np.array([ord(x) for x in gen_pat], dtype=np.uint32)
+    gen_pat_level = pattern_level(gen_pat)
+    gpot = tuple(ord(x) for x in gen_pat)
+
+    gen_pat_len = len(gen_pat)
+
+    has_complement = np.full(100,True)
+    has_complement[ord('A')] = False
+    has_complement[ord('C')] = False
+    has_complement[ord('G')] = False
+    has_complement[ord('T')] = False
+
+    kmer2num  = KE.get_kmer2num()
+    pattern2num = PE.get_pattern2num()
+    for pattern in subpatterns_level(gen_pat, 0):
+        #pe_pat_num = PE.pattern2num(pattern)
+        pe_pat_num = pattern2num(pattern)
+        ke_pat_num = kmer2num(pattern)
+        pattern_table[pe_pat_num] = kmer_table[ke_pat_num]
+        # TODO: lav score_array_multi_multi
+        score_mem[pe_pat_num] = score_array_3D(pattern_table[pe_pat_num], alpha, my)
+        backtrack_mem[pe_pat_num] = pe_pat_num
+
+    for level in range(1, gen_pat_level+1):
+        if verbosity > 1:
+            print(f'level {level} of {gen_pat_level}', file=sys.stderr)
+        for pattern in subpatterns_level_ord_np(gpot, gen_pat_level, level):
+            handle_pattern_multi_multi(pattern, score_mem, backtrack_mem, pattern_table)
+    
+    pat_num = pattern2num(gen_pat)
+    names = backtrack(gen_pat, backtrack_mem, pattern2num, PE)
+    assert(all(pattern_table[pat_num][0] == kmer_table.sum(axis=0)[0]))
+    assert(all(pattern_table[pat_num][1] == kmer_table.sum(axis=0)[1]))
+    counts = np.empty((len(names), n_bins, n_types), itype)
+    rates = np.empty((len(names), n_bins, n_types), np.float32)
+    for i in range(len(names)):
+        counts[i] = pattern_table[pattern2num(names[i])]
+        rates[i] = rate_array_3D(counts[i], alpha, my)
+    return score_mem[pat_num], names, counts, rates
 
