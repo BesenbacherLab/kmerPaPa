@@ -354,12 +354,12 @@ class GridSearchCV(CrossValidation):
                 
 
 class BaysianOptimizationCV(CrossValidation):
-    def __init__(self, genpat, contextD, nfolds=2, nit=1, seed=None):
+    def __init__(self, genpat, contextD, nfolds=2, nit=1, seed=None, min_pseudo=0.5, min_penalty=0.5, max_pseudo=100, max_penalty=30):
         super().__init__(genpat, contextD, nfolds=nfolds, nit=nit, seed=seed)
         self.search_space = [
-            Real(name='pseudo', low=0.01, high=100),
-            Real(name='penalty', low=0.1, high=30),
-        ]    
+            Real(name='pseudo', low=min_pseudo, high=max_pseudo),
+            Real(name='penalty', low=min_penalty, high=max_penalty),
+        ]
         @use_named_args(self.search_space)
         def f(pseudo, penalty):
             return self.loglik(pseudo, penalty)
