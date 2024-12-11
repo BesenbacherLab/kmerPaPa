@@ -93,6 +93,8 @@ def read_dict(f, super_pattern, length=None):
             dictionary with kmer counts
             total number of counts
     """
+    if length is None and super_pattern is not None:
+        length = len(super_pattern)
     D = {}
     all_counts = 0
     start = None
@@ -210,6 +212,6 @@ def read_input(args, super_pattern):
         else:
             contextD, n_unmut, n_mut = read_postive_and_other(args.positive, args.background, super_pattern, n_scale = 1, background=True)
     else:
-            contextD, n_unmut, n_mut = read_joint_kmer_counts(args.joint_context_counts, super_pattern, n_scale = 1)
+        contextD, n_unmut, n_mut = read_joint_kmer_counts(args.joint_context_counts, super_pattern, n_scale = 1)
         
     return contextD, n_unmut, n_mut
