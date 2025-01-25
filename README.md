@@ -9,7 +9,7 @@ kmerPaPa can be installed using pip:
 ```
 pip install kmerpapa
 ```
-or using [pipx](https://pypa.github.io/pipx/):
+or using [pipx](https://pipx.pypa.io/stable/):
 ```
 pipx install kmerpapa
 ```
